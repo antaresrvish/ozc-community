@@ -178,6 +178,13 @@ const resourcesOf = (spec: MinecraftDef.ServerSpec): Obj => {
   return { requests, ...(Object.keys(limits).length === 0 ? {} : { limits }) }
 }
 
+/** The namespace a server lives in, when the spec names one: applied first, never deleted by `down`. */
+const namespaceObject = (namespace: string): K8sDef.KubeObject => ({
+  apiVersion: 'v1',
+  kind: 'Namespace',
+  metadata: { name: namespace, labels: { [MANAGED_LABEL]: MANAGED_BY } },
+})
+
 /** The Service players connect through. */
 const service = (name: string, spec: MinecraftDef.ServerSpec): K8sDef.KubeObject => ({
   apiVersion: 'v1',
@@ -245,8 +252,12 @@ const statefulSet = (name: string, spec: MinecraftDef.ServerSpec): K8sDef.KubeOb
   }
 }
 
-/** The objects a server renders to, in the order they are applied: the Service, then the server. */
+/**
+ * The objects a server renders to, in the order they are applied: the Namespace it names (one that
+ * is there already is left as it is), the Service, then the server.
+ */
 export const render = (name: string, spec: MinecraftDef.ServerSpec): K8sDef.KubeObject[] => [
+  ...(spec.namespace === undefined ? [] : [namespaceObject(spec.namespace)]),
   service(name, spec),
   statefulSet(name, spec),
 ]

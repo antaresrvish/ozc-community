@@ -18,7 +18,7 @@ const CLAIM = resolveKind('pvc')
  * `ozc minecraft down [names...] [--volumes]` — delete each server's objects (reverse order,
  * tolerant of ones already gone). The world's claim is KEPT — the StatefulSet made it and does not
  * take it along, and the next `up` finds the world where it was — unless `--volumes` says the
- * world goes too. No names → every `[minecraft.*]`.
+ * world goes too. The Namespace is kept as well. No names → every `[minecraft.*]`.
  */
 export const DownAction = defineAction(
   {
@@ -45,7 +45,9 @@ export const DownAction = defineAction(
         const ref = kindRefOf(object)
         const objectName = object.metadata?.name
 
-        if (ref !== undefined && objectName !== undefined) {
+        // the Namespace stays: it may hold other servers, Secrets, other tenants — and deleting it
+        // would take the world's claim with it
+        if (object.kind !== 'Namespace' && ref !== undefined && objectName !== undefined) {
           yield* attempt(
             K8s.actions.remove(ref, objectName, { namespace: object.metadata?.namespace }),
           )

@@ -49,6 +49,17 @@ const FULL: MinecraftDef.ServerSpec = {
 }
 
 describe('a server', () => {
+  it('renders its Namespace first when it names one, so a new one is there before the Service', () => {
+    const objects = render('creative', FULL)
+
+    expect(objects.map(object => [object.kind, object.metadata?.name])).toEqual([
+      ['Namespace', 'games'],
+      ['Service', 'creative'],
+      ['StatefulSet', 'creative'],
+    ])
+    expect(objects[0]?.metadata?.labels).toEqual({ 'app.kubernetes.io/managed-by': 'ozc' })
+  })
+
   it('renders to a Service and a StatefulSet of one, labelled alike, in the order they are applied', () => {
     const objects = render('survival', {})
     const labels = {
@@ -104,7 +115,7 @@ describe('a server', () => {
   })
 
   it('takes every field of the spec, and lets env have the last word', () => {
-    const [service, server] = render('creative', FULL)
+    const [, service, server] = render('creative', FULL)
 
     expect(environmentOf(FULL)).toEqual({
       EULA: 'TRUE',
