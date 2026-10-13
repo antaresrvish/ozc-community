@@ -53,9 +53,11 @@ Pre-commit hook runs `moon run :check`.
   `db:core`, `server:core` — never `@ozaco/…` (lint: `no-restricted-imports`). The host serves
   its own instances of std, cli, the sdk and zod: `pack()` leaves them external and records the
   version each was built against in the banner; the host refuses a plugin built against a NEWER
-  version than it carries (`^built` has to take the host's). So the catalog pins what the
-  RELEASED ozc carries — `zod` exactly — and a plugin is built against those, not against
-  whatever npm has newest.
+  version than it carries (`^built` has to take the host's), and a plugin's `sdk: ^<built>` range
+  has to take the host's sdk. So the catalog pins what the ozc being released carries — `zod`
+  exactly — and a plugin is built against those, not against whatever npm has newest. As it
+  stands: `@ozaco/ozc-sdk ^0.1.2` (published 2026-10-13), which the host ozc 0.2.3 carries; the
+  released 0.2.2 (sdk 0.1.1) refuses a plugin built here until 0.2.3 is out.
 - Errors are `Result`s with the module's tag bundle (`createTags`), never a bare throw or a
   `new Error`; telemetry through `Trace.actions.*`; the std conventions of `ozaco/ozaco`'s
   CLAUDE.md hold here.
@@ -63,6 +65,31 @@ Pre-commit hook runs `moon run :check`.
   `src/internal/<group>/`, `src/const.ts`, `src/types.ts`; tests in `tests/`.
 - Tests and smokes isolate themselves (`OZC_DIR` in a temp dir, own ports). Never point one at
   `~/.ozaco`.
+
+## The plugins
+
+- `plugins/minecraft` — `ozc minecraft up|down|status|logs|console|preview|backup|backups|restore|prune`:
+  Minecraft servers on the cluster `[kube].profile` / `-p` names (`sdk:k8s`, `sdk:profile`). Each
+  `[minecraft.<name>]` is ONE server — several servers are several tables, each with a port of its
+  own on the node (two on one port are refused before the cluster is asked) — rendered to a Service
+  (LoadBalancer by default — on k3s ServiceLB puts it on the node's own address; `nodeport`,
+  `none`) and a StatefulSet of one (`itzg/minecraft-server`, the world on the claim
+  `data-<name>-0`, readiness by the image's `mc-health`, no liveness). `console` runs the image's
+  `rcon-cli` inside the pod (`K8s.actions.exec`): no password leaves it. Mods and plugins are the
+  spec's lists, the image's own variables as is (`modrinth` → `MODRINTH_PROJECTS`, `mods`,
+  `plugins`, `spiget`, `modpack`, `removeOldMods`); resources are `memory` (the Java heap, also the
+  pod's memory request as `<heap>i`), `cpu`, `cpuLimit`, `memoryLimit`. A `domain` binds nothing in
+  the cluster: `status` prints the A record (and the SRV record `_minecraft._tcp.<domain>` on a port
+  other than 25565) the name needs. `backup` is a Longhorn `VolumeSnapshot` of the claim, the world
+  held still meanwhile (`save-all flush`, `save-off` … `save-on`); `--s3` / `backup = "s3"` push it
+  through the `longhorn-backup` class; `restore` remakes the claim from a snapshot (the server has
+  to be down — it holds the claim — then `up`). The config is the ozaco TOML, discovered from
+  `-C`/cwd up to home — `ozaco.toml`, or a fragment such as `.ozaco/minecraft.toml` beside
+  `.ozaco/kube.toml`: the whole shape, with every field, is `plugins/minecraft/examples/minecraft.toml`
+  (a test holds it to the schema).
+
+  Not yet: the WebRTC side — the user's words: "ip üzerinden rtc portu açacak" — an agent beside
+  the server reached over an RTC port on the node's address. Nothing of it is in the spec.
 
 ## Release
 

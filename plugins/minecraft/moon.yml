@@ -1,0 +1,30 @@
+language: typescript
+layer: application
+toolchains:
+  default: bun
+
+tasks:
+  build:
+    command: bun x tsdown --config-loader unrun
+    inputs:
+      - src/**/*
+      - package.json
+      - tsdown.config.ts
+      - /bun.lock
+    outputs:
+      - dist/plugin.js
+  types:
+    command: bun x tsc -p tsconfig.json --noEmit
+    inputs:
+      - src/**/*
+      - tests/**/*
+  test:
+    # the sources as they are: what a spec renders to, what the schema refuses — nothing here asks
+    # a cluster
+    command: bun test
+    inputs:
+      - src/**/*
+      - tests/**/*
+      - package.json
+      - tsconfig.json
+      - /bun.lock

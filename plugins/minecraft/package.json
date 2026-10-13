@@ -1,0 +1,23 @@
+{
+  "name": "@ozaco/ozc-plugin-minecraft",
+  "version": "0.1.0",
+  "private": true,
+  "description": "minecraft plugin for ozc — run Minecraft servers on the cluster ([minecraft.*] → StatefulSet/Service/PVC) via sdk:k8s",
+  "type": "module",
+  "devDependencies": {
+    "@ozaco/cli": "catalog:ozaco",
+    "@ozaco/devkit": "catalog:ozaco",
+    "@ozaco/ozc-devkit": "catalog:ozaco",
+    "@ozaco/ozc-sdk": "catalog:ozaco",
+    "@ozaco/std": "catalog:ozaco",
+    "tsdown": "catalog:build",
+    "unrun": "catalog:build",
+    "zod": "catalog:shared"
+  },
+  "ozc": {
+    "name": "minecraft",
+    "commands": [
+      "minecraft"
+    ]
+  }
+}

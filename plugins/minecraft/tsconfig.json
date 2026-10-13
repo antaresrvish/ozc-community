@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "lib": ["esnext"],
+    // `@ozaco/devkit` declares the `cli:` / `std:` ambient modules; `@ozaco/ozc-devkit` the `sdk:` ones.
+    "types": ["node", "bun", "@ozaco/devkit", "@ozaco/ozc-devkit"],
+
+    // A plugin is an executable bundle, not a published library — no declaration emit.
+    "allowImportingTsExtensions": false,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "emitDeclarationOnly": false,
+    // what the suites run the sources with: Bun resolves the aliases the sources import by
+    "paths": {
+      "std:*": ["../../node_modules/@ozaco/std/dist/*"],
+      "cli:*": ["../../node_modules/@ozaco/cli/dist/*"],
+      "sdk:*": ["../../node_modules/@ozaco/ozc-sdk/dist/*"]
+    }
+  },
+  "extends": ["../../tsconfig.base.json"],
+  "include": ["src", "tests", "tsdown.config.ts"],
+  "exclude": ["**/dist/**"],
+  "references": []
+}

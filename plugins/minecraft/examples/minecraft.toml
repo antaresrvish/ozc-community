@@ -1,0 +1,56 @@
+# Two Minecraft servers on the cluster `[kube].profile` names (`-p` picks another). This file is an
+# ozaco config fragment: put it beside `.ozaco/kube.toml` as `.ozaco/minecraft.toml`, or paste the
+# tables into `ozaco.toml` — the plugin discovers it from the directory it runs in (or `-C`) up to
+# the home directory. Every value here but `type` has a default; a table with nothing in it is a
+# server too.
+#
+#   ozc minecraft preview            # the objects, no cluster needed
+#   ozc minecraft up                 # both servers    ·   ozc minecraft up survival
+#   ozc minecraft status             # ready, address, players — and the DNS records a domain needs
+#   ozc minecraft logs survival -f   ·   ozc minecraft console survival say hello
+#   ozc minecraft backup survival    # a Longhorn snapshot of the world (--s3: to the backup target)
+#   ozc minecraft restore survival   # down first; then up
+#
+# Several servers are several tables, each with a port of its own on the node: two servers on one
+# port are refused before the cluster is asked.
+
+# ── survival: Paper, plugins, a domain ─────────────────────────────────────────────────────────
+[minecraft.survival]
+namespace = "games"
+type = "PAPER" # VANILLA, FABRIC, FORGE, NEOFORGE, PURPUR, … as the image spells it
+version = "1.21.1" # LATEST by default
+domain = "play.example.com" # players connect by this name: see `status` for the A (and SRV) record
+port = 25565 # the port on the node's address (expose = "loadbalancer", the default)
+memory = "2G" # the Java heap, written as Java reads it — also the pod's memory request
+memoryLimit = "3Gi" # the pod's limits, written as Kubernetes reads them; cpu = "500m", cpuLimit = "2"
+storage = "20Gi" # the world's volume (10Gi by default); storageClass = "longhorn"
+backup = "s3" # `backup` pushes to the backup target by default; "snapshot" (default) stays in-cluster
+motd = "ozaco survival"
+difficulty = "normal" # peaceful, easy, normal, hard
+maxPlayers = 20
+onlineMode = true
+ops = ["steve"]
+whitelist = ["steve", "alex"] # naming anyone turns the whitelist on
+timezone = "Europe/Istanbul"
+spiget = [9089, 1997] # Spigot resources by id (EssentialsX, LuckPerms), installed at start
+plugins = [ # plugins by jar URL, likewise
+  "https://example.com/plugins/MyPlugin-1.0.jar",
+]
+
+[minecraft.survival.env] # anything else the image reads, laid over the fields above
+VIEW_DISTANCE = 12
+ENABLE_COMMAND_BLOCK = true
+
+# ── creative: Fabric with Modrinth mods, in-cluster port of its own ────────────────────────────
+[minecraft.creative]
+namespace = "games"
+type = "FABRIC"
+version = "1.21.1"
+port = 25566 # a second server, a second port on the same node
+memory = "4G"
+cpu = "1"
+cpuLimit = "3"
+memoryLimit = "6Gi"
+modrinth = ["fabric-api", "lithium", "sodium:mc1.21.1-0.6.0"] # slug, or slug:version
+modrinthDependencies = "required"
+removeOldMods = true # mods no longer listed are dropped at the next start
