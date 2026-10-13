@@ -1,0 +1,153 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error",
+    "perf": "error",
+    "restriction": "error",
+    "suspicious": "error",
+    "pedantic": "error",
+    "style": "error"
+  },
+  "plugins": ["unicorn", "typescript", "oxc", "import", "promise"],
+  "jsPlugins": ["@stylistic/eslint-plugin"],
+  "rules": {
+    "no-unused-vars": "error",
+    "no-empty-object-type": "error",
+    "max-lines-per-function": "off",
+    "oxc/no-optional-chaining": "off",
+    "oxc/no-barrel-file": "off",
+    "oxc/no-async-await": "off",
+    "oxc/no-rest-spread-properties": "off",
+
+    "unicorn/no-array-for-each": "warn",
+    "unicorn/no-this-assignment": "off",
+    "unicorn/no-array-reduce": "off",
+    "unicorn/prefer-spread": "off",
+    "unicorn/prefer-at": "off",
+    "unicorn/no-useless-undefined": "off",
+    "unicorn/no-null": "off",
+    "unicorn/new-for-builtins": "off",
+    "unicorn/prefer-global-this": "off",
+    "unicorn/no-nested-ternary": "off",
+    "unicorn/no-array-method-this-argument": "off",
+    "unicorn/no-array-callback-reference": "off",
+    "unicorn/number-literal-case": "off",
+    "unicorn/prefer-math-trunc": "off",
+    "unicorn/import-style": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "unicorn/max-nested-calls": "off",
+
+    "eslint/max-lines": "off",
+    "eslint/no-bitwise": "off",
+    "eslint/id-length": "off",
+    "eslint/sort-keys": "off",
+    "eslint/no-undefined": "off",
+    "eslint/no-ternary": "off",
+    "eslint/max-classes-per-file": "off",
+    "eslint/max-statements": "off",
+    "eslint/prefer-destructuring": "off",
+    "eslint/max-depth": "off",
+    "eslint/no-magic-numbers": "off",
+    "eslint/no-warning-comments": "off",
+    "eslint/func-names": "off",
+    "eslint/no-empty-function": "off",
+    "eslint/func-style": "off",
+    "eslint/no-console": "off",
+    "eslint/no-plusplus": "off",
+    "eslint/capitalized-comments": "off",
+    "eslint/no-continue": "off",
+    "eslint/no-implicit-coercion": "off",
+    "eslint/sort-imports": "off",
+    "eslint/no-void": "off",
+    "eslint/no-duplicate-imports": [
+      "error",
+      {
+        "allowSeparateTypeImports": true
+      }
+    ],
+    "eslint/new-cap": "off",
+    "eslint/no-use-before-define": "off",
+    "eslint/no-inline-comments": "off",
+    "eslint/init-declarations": "off",
+    "eslint/no-nested-ternary": "off",
+    "eslint/complexity": "off",
+    "eslint/require-yield": "off",
+    "eslint/no-underscore-dangle": "off",
+    "eslint/no-useless-return": "off",
+    "prefer-named-capture-group": "off",
+    "eslint/one-var": "off",
+    "eslint/no-redeclare": "off",
+
+    "typescript/ban-types": "off",
+    "typescript/consistent-type-definitions": "off",
+    "typescript/explicit-function-return-type": "off",
+    "typescript/no-namespace": "off",
+    "typescript/no-empty-interface": "off",
+    "typescript/array-type": "off",
+    "typescript/no-non-null-assertion": "off",
+    "typescript/no-invalid-void-type": "off",
+    "typescript/parameter-properties": "off",
+    "typescript/explicit-module-boundary-types": "off",
+    "typescript/unified-signatures": "off",
+    "typescript/no-explicit-any": "error",
+    "typescript/explicit-member-accessibility": "off",
+    "typescript/method-signature-style": "off",
+
+    "promise/spec-only": "off",
+    "promise/avoid-new": "off",
+    "promise/prefer-await-to-then": "off",
+    "promise/prefer-await-to-callbacks": "off",
+    "promise/catch-or-return": "off",
+    "promise/prefer-catch": "off",
+
+    "import/group-exports": "off",
+    "import/no-named-export": "off",
+    "import/prefer-default-export": "off",
+    "import/no-relative-parent-imports": "off",
+    "import/named": "error",
+    "import/namespace": "error",
+    "import/default": "error",
+    "import/export": "error",
+    "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
+    "import/no-cycle": "off",
+    "import/no-nodejs-modules": "off",
+    "import/no-anonymous-default-export": "off",
+    "import/max-dependencies": "off"
+  },
+  "ignorePatterns": ["**/dist/**", "**/*.d.ts", "**/*.gen.ts", "**/node_modules/**"],
+  "overrides": [
+    {
+      "files": ["plugins/*/{src,tests,scripts}/**/*.ts", "release/{src,tests,scripts}/**/*.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@ozaco/**",
+                  "!@ozaco/devkit",
+                  "!@ozaco/devkit/**",
+                  "!@ozaco/ozc-devkit",
+                  "!@ozaco/ozc-devkit/**"
+                ],
+                "message": "devkit mode: import through the aliases (sdk:*, std:*, cli:*, db:*, server:*, client:*) — the @ozaco/* specifiers are for published consumers"
+              }
+            ]
+          }
+        ],
+        // blank lines between statements: a `return`, a `throw` and a block (`if`, `for`, `while`,
+        // `switch`, `try`) stand apart from what is around them, and a run of declarations from
+        // what follows it. Fixable: `moon run :apply -f`
+        "@stylistic/padding-line-between-statements": [
+          "error",
+          { "blankLine": "always", "prev": "*", "next": ["return", "throw"] },
+          { "blankLine": "always", "prev": ["const", "let"], "next": "*" },
+          { "blankLine": "any", "prev": ["const", "let"], "next": ["const", "let"] },
+          { "blankLine": "always", "prev": "block-like", "next": "*" },
+          { "blankLine": "always", "prev": "*", "next": "block-like" }
+        ]
+      }
+    }
+  ]
+}

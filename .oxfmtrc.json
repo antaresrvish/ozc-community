@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": ["**/dist/**", "**/*.d.ts", "**/*.gen.ts", "**/node_modules/**"],
+  "semi": false,
+  "arrowParens": "avoid",
+  "bracketSameLine": true,
+  "jsxSingleQuote": true,
+  "printWidth": 100,
+  "useTabs": false,
+  "tabWidth": 2,
+  "trailingComma": "all",
+  "quoteProps": "as-needed",
+  "singleQuote": true,
+  "bracketSpacing": true,
+  "sortImports": {
+    "customGroups": [
+      {
+        "groupName": "sdk",
+        "elementNamePattern": ["sdk:*"]
+      },
+      {
+        "groupName": "ozaco",
+        "elementNamePattern": ["std:*", "cli:*", "server:*", "db:*", "ai:*", "devkit:*", "client:*"]
+      }
+    ],
+    "groups": ["sdk", "ozaco", "builtin", "external", "internal", "parent", ["sibling", "index"]],
+    "internalPattern": ["@/", "~/"],
+    "newlinesBetween": true,
+    "partitionByComment": true,
+    "sortSideEffects": false
+  }
+}

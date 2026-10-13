@@ -1,0 +1,43 @@
+{
+  "name": "ozc-community",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "plugins/*"
+    ],
+    "catalogs": {
+      "build": {
+        "tsdown": "^0.23.0",
+        "unrun": "^0.3.1"
+      },
+      "shared": {
+        "zod": "4.6.5"
+      },
+      "ozaco": {
+        "@ozaco/cli": "^0.5.0",
+        "@ozaco/devkit": "^0.4.0",
+        "@ozaco/ozc-devkit": "^0.1.0",
+        "@ozaco/ozc-sdk": "^0.1.1",
+        "@ozaco/std": "^0.5.0"
+      }
+    }
+  },
+  "type": "module",
+  "scripts": {
+    "commit": "commit"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "@commitlint/prompt-cli": "^21.2.3",
+    "@ozaco/ozc-sdk": "catalog:ozaco",
+    "@ozaco/std": "catalog:ozaco",
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "@types/bun": "^1.4.2",
+    "@types/node": "^26.6.4",
+    "oxfmt": "^0.71.0",
+    "oxlint": "^1.86.0",
+    "typescript": "^7.0.2"
+  }
+}

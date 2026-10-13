@@ -1,0 +1,45 @@
+name: 'Release'
+
+# Every tag, whatever it is called, and by hand. The tag is only the occasion: WHAT is released is
+# decided by the release tool (`community:release`), which asks for every plugin of `plugins/`
+# whether its version is published already and builds the ones that are not. A tag that bumped no
+# version releases nothing, and says so. Nothing of the event — no tag name, no branch name — is
+# read here.
+on:
+  push:
+    tags: ['**']
+  workflow_dispatch:
+
+# The releases are this repository's own: the run's token writes them, and nothing else.
+permissions:
+  contents: write
+
+# One release at a time, and none cut short: two tags pushed together wait for each other, and the
+# second finds what the first published.
+concurrency:
+  group: 'release'
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: 'Release'
+    runs-on: 'ubuntu-latest'
+    timeout-minutes: 30
+    steps:
+      - uses: 'actions/checkout@v7'
+        with:
+          persist-credentials: false
+      # No cache: what one restores is the bun and the moon that then build what is published,
+      # and a cache can be written by a run on any ref.
+      - uses: 'moonrepo/setup-toolchain@v0'
+        with:
+          auto-install: true
+          cache: false
+      - run: 'bun install --frozen-lockfile'
+      # The task `community:release`, by its own command instead of through Moon: the step that
+      # holds the token runs the tool, and nothing that builds — the tool starts its own Moon,
+      # without the token. GH_TOKEN is what `gh` publishes with: the run's own token, which may
+      # write releases here and nowhere else.
+      - run: 'bun release/src/main.ts --publish'
+        env:
+          GH_TOKEN: ${{ github.token }}

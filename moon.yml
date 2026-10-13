@@ -1,0 +1,73 @@
+# The workspace's own project. Its id is said here: left to Moon it is the name of the directory
+# the repository is checked out in, and `community:release` would be gone in a checkout that is
+# called anything else.
+id: community
+language: typescript
+layer: library
+toolchains:
+  default: bun
+
+tasks:
+  check:
+    options:
+      runInCI: true
+    script: bun x oxfmt --check && bun x oxlint
+    toolchains: bun
+  apply:
+    options:
+      runInCI: false
+    script: bun x oxfmt && bun x oxlint --fix
+    toolchains: bun
+  apply-unsafe:
+    options:
+      runInCI: false
+    script: bun x oxfmt && bun x oxlint --fix-dangerously
+    toolchains: bun
+
+  # The release tool: it spans the plugins, so it is a task of the workspace's own project. Every
+  # plugin of `plugins/` whose version is not released yet is built and packed, each as a release
+  # of its own in THIS repository — see `release/src/main.ts`.
+  #
+  #   moon run community:release                    a dry run: everything but the write to GitHub
+  #   moon run community:release -- --publish       publish; needs a token in GH_TOKEN, and a tree
+  #                                                 that is a commit and nothing else
+  #   moon run community:release -- --plugin kube   only that plugin
+  #
+  # The pipeline (`.github/workflows/release.yml`) runs this task's command by itself: the step
+  # that holds the token then builds nothing — the tool starts its own Moon, without the token.
+  release:
+    command: bun release/src/main.ts
+    env:
+      BUN_RUNTIME_TRANSPILER_CACHE_PATH: '0'
+    options:
+      cache: false
+      runInCI: false
+
+  types:
+    command: bun x tsc -p release/tsconfig.json --noEmit
+    inputs:
+      - /release/src/**/*
+      - /release/tests/**/*
+      - /release/tsconfig.json
+      - /package.json
+      - /bun.lock
+
+  test:
+    # the release tool against workspaces, builds and a `gh` of the suites' own making: nothing is
+    # built, nothing reaches GitHub. The suites are named by path: a bare word would be a filter,
+    # and take every test file of the repository that has it in its name
+    command: bun test ./release/tests
+    inputs:
+      - /release/src/**/*
+      - /release/tests/**/*
+      - /package.json
+      - /moon.yml
+      # a plugin is a release: read off its package
+      - /plugins/*/package.json
+      - /plugins/*/moon.yml
+      - /.github/workflows/release.yml
+      - /bun.lock
+    options:
+      # the suites give the tool a `gh` and a `moon` that are shell scripts, and build workspaces
+      # with git: a release is published from Linux, and the tool is held there
+      os: [linux, macos]

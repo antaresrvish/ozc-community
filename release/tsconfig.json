@@ -1,0 +1,19 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    // a tool that is run from source, never built — no declaration emit
+    "composite": false,
+    "declaration": false,
+    "emitDeclarationOnly": false,
+    "noEmit": true,
+    "lib": ["esnext"],
+    "types": ["node", "bun"],
+    // the aliases the sources import the ozaco packages by (`std:effect`, `sdk:core`): Bun reads
+    // these when it runs the sources as they are, tsc when it checks them
+    "paths": {
+      "std:*": ["../node_modules/@ozaco/std/dist/*"],
+      "sdk:*": ["../node_modules/@ozaco/ozc-sdk/dist/*"]
+    }
+  },
+  "include": ["src/**/*", "tests/**/*"]
+}

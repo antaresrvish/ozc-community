@@ -1,0 +1,16 @@
+$schema: https://moonrepo.dev/schemas/workspace.json
+
+projects:
+  - plugins/*
+  - .
+
+vcs:
+  client: git
+  provider: github
+  defaultBranch: main
+  hooks:
+    pre-commit:
+      - 'moon run :check'
+    commit-msg:
+      - 'bunx --no -- commitlint --edit $ARG1'
+  sync: true
