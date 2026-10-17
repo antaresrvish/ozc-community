@@ -91,6 +91,91 @@ Pre-commit hook runs `moon run :check`.
   Not yet: the WebRTC side — the user's words: "ip üzerinden rtc portu açacak" — an agent beside
   the server reached over an RTC port on the node's address. Nothing of it is in the spec.
 
+- `plugins/ignoredpi` — `ozc ignoredpi up|down|status|check|logs|run`: the sites blocked in Turkey
+  opened for EVERY app on the machine, with no proxy setting anywhere (SpoofDPI is a proxy: the
+  Discord app ignores it). The service is the machine's DNS: names are resolved over DoH by
+  address (`https://1.1.1.1/dns-query` — no name for the DPI to read); a blocked name — on the
+  lists (Discord's built in, `[ignoredpi].domains`) or one the ISP's resolver answers with its
+  block page (the sinkholes: BTK's built in, others learned at start from canary names) — is
+  answered with this machine, A only (no AAAA, no HTTPS record). Its forwarder on 443/80 reads the
+  name from the TLS hello (HTTP `Host`), connects to the real address and sends the hello as TWO
+  TLS records cut inside the name; the TLS is never opened. It also takes Cloudflare's other HTTPS
+  ports (`TLS_PORTS`: 2053, 2083, 2087, 2096, 8443), each forwarded to the same port: Discord's
+  voice RTC socket is `wss://c-<iata>NN-<hex>.discord.media:2083` — with nothing on 127.0.0.1:2083
+  a voice channel never connects (seen in `%APPDATA%\discord\logs\renderer_js.log`). One already
+  taken is logged and passed over; a trial with `--https` moved takes none. Measured on Türk Telekom (2026-10-17):
+  TCP segmentation (SpoofDPI's way) is reset, the record split passes; for HTTP the header name
+  `hoSt` passes where `Host`/`host` do not. macOS lets a user bind 53/80/443 on the wildcard
+  only, so the service binds `0.0.0.0` and drops anything not from loopback (`lan = true` admits
+  the private network). `up` writes the LaunchAgent `com.ozaco.ignoredpi` (`ozc ignoredpi run`
+  from home); `run` takes the ports FIRST, then points every network service on a device at
+  127.0.0.1 (`networksetup`), saving each one's DNS to `~/.ozaco/ignoredpi/state.json` before it
+  is changed, and gives them back on SIGTERM; `down` (or the next start) gives back what a crashed
+  run saved. The ISP resolver is DHCP's (`ipconfig getoption`), never the DNS set by hand. Config
+  is read from home (`~/ozaco.toml` or `~/.ozaco/ignoredpi.toml`): the whole shape is
+  `plugins/ignoredpi/examples/ignoredpi.toml`. `run --trial --dns n --https n --http n` runs it
+  beside everything, the DNS untouched; `check <name>` shows ISP vs DoH, the verdict, and a hello
+  sent whole and cut. Seams: `IGNOREDPI_NETWORKSETUP`, `IGNOREDPI_LAUNCHCTL`, `IGNOREDPI_IPCONFIG`,
+  `IGNOREDPI_DSCACHEUTIL`, `IGNOREDPI_OZC`. A socket belongs to the scope it is opened in — never
+  open one inside a `race` branch (the race's end closes it).
+
+  The commands go through the host of the machine (`internal/system.ts`: `macos.ts`, `linux.ts`,
+  `windows.ts`). On Windows the ports are bound on 127.0.0.1 (no firewall question; `lan = true`
+  binds the wildcard), and the DNS is ONE NRPT rule — every name (`.`) to 127.0.0.1, comment
+  `ozaco ignoredpi` — not each adapter's servers: an adapter's IPv6 DNS (the router's `fe80::1`)
+  would go around those, the NRPT is asked first whatever the adapter. Giving it back is removing
+  the rule (found by its comment, nothing saved). The ISP resolver is the registry's
+  `DhcpNameServer` of the adapter the default route leaves by. `up` registers the scheduled task
+  `com.ozaco.ignoredpi` from `~/.ozaco/ignoredpi/task.xml` (UTF-16): `S4U` (no window, no stored
+  password), highest level, at boot and logon, no time limit, on battery too; it runs `cmd` looping
+  `ozc ignoredpi run >> log`, 10 s apart (a task's own restart counts only a failed start). Windows
+  has no SIGTERM: ending the task kills, so `down` gives the DNS back itself. The NRPT and the task
+  need an administrator — `up`, `down` and `run` check `whoami /groups` for the High label (SIDs,
+  no language) and say to open an elevated terminal; `status` and `check` need none (a pid that
+  answers `EPERM` is alive). PowerShell is run with `-EncodedCommand` (UTF-16LE base64: no quoting)
+  and prints JSON (its cmdlets answer alike in every language — never parse `netsh`/`schtasks`
+  text). Seams: `IGNOREDPI_POWERSHELL`, `IGNOREDPI_SCHTASKS`, `IGNOREDPI_WHOAMI`. The macOS suite's
+  stand-ins are shell scripts: it is skipped on Windows. `nslookup` asks the adapter's server
+  directly and never shows the NRPT; `Resolve-DnsName` does.
+
+  Run as administrator on Windows 11 on Türk Telekom (2026-10-17): `up` took the DNS
+  (`Resolve-DnsName discord.com` → 127.0.0.1: the bare `.` rule catches every name), Discord and
+  the blocked sites opened, voice channels connect once the RTC socket's 2083 is forwarded (the
+  media, UDP to the address the socket names, passes the DPI untouched), and `down` left no task,
+  rule or state behind.
+
+  On Linux (`linux.ts`) the DNS is ONE drop-in of systemd-resolved,
+  `/run/systemd/resolved.conf.d/99-ozaco-ignoredpi.conf`: `DNS=127.0.0.1`, `Domains=~.` (DNSSEC
+  and DNS over TLS off for it) — not each link's servers, which NetworkManager writes again
+  whenever a link comes up. A routing domain of `~.` outranks a link that is only the default
+  route, so the router's servers (its `fe80::1` too) are not asked, while a VPN's own names
+  (Tailscale's `~ts.net`) still go to it. Under `/run`, a reboot forgets it; giving it back is
+  removing it (nothing saved), then `systemctl --no-block reload-or-restart systemd-resolved` —
+  NEVER waiting there: the unit is `After=systemd-resolved.service`, so inside its own stop (the
+  service giving the DNS back on SIGTERM) resolved's job waits for that stop, and a waiting
+  `systemctl` held it until systemd SIGABRTed and SIGKILLed it (seen on Fedora 44). The ISP
+  resolver is the first IPv4 server of the link the default route leaves by (`ip -j route show
+  default`, `resolvectl dns|domain|default-route` — text, wrapped lines joined back; no `--json`:
+  Ubuntu 24.04's resolvectl has none). `up` writes the system unit
+  `/etc/systemd/system/com.ozaco.ignoredpi.service`: root (the ports below 1024 and resolved are
+  root's), `OZC_HOME` the user's home (the plugin, config and state are the user's `~/.ozaco`),
+  `Restart=always` 10 s apart, `ExecStart=/bin/sh -c 'exec "$0" ignoredpi run >>"$1" 2>&1'` — on
+  Fedora SELinux lets systemd execute no file under a home, a shell it starts may (and it opens the
+  log for the same reason). `up` and `down` run as the user and ask `sudo` (`sudo -v` once, the
+  password on the terminal) for what they change; `run` binds the ports itself, so it has to BE
+  root (`sudo OZC_HOME="$HOME" "$(command -v ozc)" ignoredpi run`); `status` and `check` need
+  neither. Seams: `IGNOREDPI_SUDO`, `IGNOREDPI_SYSTEMCTL`, `IGNOREDPI_RESOLVECTL`, `IGNOREDPI_IP`,
+  `IGNOREDPI_RESOLVED_DIR`, `IGNOREDPI_UNIT_DIR`. A trial on Linux takes `--dns 5354`, not 5353
+  (avahi's mDNS holds it).
+
+  Run on Fedora 44 (systemd 259, SELinux enforcing) on Türk Telekom (2026-10-17): `up` took the
+  DNS (`resolvectl query discord.com` → 127.0.0.1, the router's servers left on the link, Tailscale's
+  names to Tailscale), the unit came up through the shell under SELinux, Discord and the blocked
+  sites opened. `lan = true` is not tried on Linux: the wildcard's 53 may collide with resolved's
+  stub on 127.0.0.53.
+
+  `run --trial` runs anywhere.
+
 ## Release
 
 `release/` (root Moon project `community`) releases each plugin at its own version as one GitHub
