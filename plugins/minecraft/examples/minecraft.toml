@@ -37,9 +37,42 @@ plugins = [ # plugins by jar URL, likewise
   "https://example.com/plugins/MyPlugin-1.0.jar",
 ]
 
+jvmOpts = ["-XX:+UseZGC"] # extra JVM arguments (JVM_OPTS); aikarFlags = true adds Aikar's GC flags
+aikarFlags = true
+
 [minecraft.survival.env] # anything else the image reads, laid over the fields above
-VIEW_DISTANCE = 12
 ENABLE_COMMAND_BLOCK = true
+
+[minecraft.survival.properties] # server.properties, any key as the file spells it; wins over the fields above
+view-distance = 12
+simulation-distance = 8
+pvp = true
+level-seed = "ozaco"
+spawn-protection = 0
+
+# The server's own files, nested as each file is: every leaf is put into the file at start, the
+# rest of the file is left as it is. `paper` is config/paper-global.yml, `paperWorld`
+# config/paper-world-defaults.yml, `bukkit` bukkit.yml, `spigot` spigot.yml; `files` is any other
+# YAML, JSON, TOML or properties file under /data, by path.
+[minecraft.survival.paper.anticheat.anti-xray]
+enabled = true
+engine-mode = 2
+
+[minecraft.survival.paper.chunks]
+auto-save-interval = 12000
+
+[minecraft.survival.paperWorld.entities.spawning]
+per-player-mob-spawns = true
+
+[minecraft.survival.bukkit.spawn-limits]
+monsters = 50
+
+[minecraft.survival.spigot.settings]
+bungeecord = false
+
+[minecraft.survival.files."plugins/Essentials/config.yml"]
+auto-afk = 300
+player-commands = ["afk", "balance"]
 
 # ── creative: Fabric with Modrinth mods, in-cluster port of its own ────────────────────────────
 [minecraft.creative]

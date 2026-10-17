@@ -5,6 +5,26 @@ import type { MinecraftDef } from '../types'
 /** `env` values are stringified at render. */
 const EnvSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
 
+/** What a configuration file holds at a leaf. */
+const ScalarSchema = z.union([z.string(), z.number(), z.boolean()])
+
+/** A configuration file's content: tables of scalars, lists of scalars, and tables again. */
+const ConfigTreeSchema: z.ZodType<MinecraftDef.ConfigTree> = z.lazy(() =>
+  z.record(z.string().min(1), z.union([ScalarSchema, z.array(ScalarSchema), ConfigTreeSchema])),
+)
+
+/** A file under `/data` the image can patch: a relative path, no climbing, a format it reads. */
+const PatchableFileSchema = z
+  .string()
+  .regex(
+    /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$)).+$/u,
+    'expected a path under /data, e.g. "plugins/Essentials/config.yml"',
+  )
+  .regex(
+    /\.(?:ya?ml|json5?|toml|properties)$/u,
+    'expected a .yml, .json, .toml or .properties file',
+  )
+
 /** A player's name: whatever Mojang takes, as long as it is something. */
 const PlayerSchema = z.string().min(1)
 
@@ -62,6 +82,14 @@ export const ServerSpecSchema: z.ZodType<MinecraftDef.ServerSpec> = z
     modpack: z.string().min(1).optional(),
     removeOldMods: z.boolean().optional(),
     backup: z.enum(['snapshot', 's3']).optional(),
+    properties: z.record(z.string().min(1), ScalarSchema).optional(),
+    paper: ConfigTreeSchema.optional(),
+    paperWorld: ConfigTreeSchema.optional(),
+    bukkit: ConfigTreeSchema.optional(),
+    spigot: ConfigTreeSchema.optional(),
+    files: z.record(PatchableFileSchema, ConfigTreeSchema).optional(),
+    jvmOpts: z.array(z.string().min(1)).optional(),
+    aikarFlags: z.boolean().optional(),
     env: EnvSchema.optional(),
   })
   .refine(spec => spec.nodePort === undefined || spec.expose === 'nodeport', {

@@ -1,10 +1,13 @@
 // oxlint-disable import/exports-last -- render helpers interleave with their private object builders
 import type { K8sDef } from 'sdk:k8s'
 
+import { createHash } from 'node:crypto'
+
 import {
   APP_LABEL,
   COMPONENT,
   COMPONENT_LABEL,
+  CONFIG_HASH_ANNOTATION,
   CONTAINER,
   DATA_PATH,
   DATA_VOLUME,
@@ -18,6 +21,9 @@ import {
   HEALTH_COMMAND,
   MANAGED_BY,
   MANAGED_LABEL,
+  PATCHES_DIR,
+  PATCHES_FILE,
+  PATCHES_VOLUME,
   RCON_PORT,
   READY_DELAY_SECONDS,
   READY_FAILURES,
@@ -27,6 +33,8 @@ import {
   VOLUME_LABEL,
 } from '../const'
 import type { MinecraftDef } from '../types'
+
+import { overruled, patchSetOf, patchSetText, propertiesOf } from './config'
 
 type Obj = Record<string, unknown>
 
@@ -77,20 +85,40 @@ export const podOf = (name: string): string => `${name}-0`
 /** The claim that holds a server's world: what the StatefulSet made from its template. */
 export const claimOf = (name: string): string => `${DATA_VOLUME}-${name}-0`
 
+/** The ConfigMap that carries a server's patch set. */
+export const configMapOf = (name: string): string => `${name}-config`
+
+/** The patch set as the pod's file holds it; `undefined` for a spec that configures no file. */
+export const patchesOf = (spec: MinecraftDef.ServerSpec): string | undefined => {
+  const set = patchSetOf(spec)
+
+  return set === undefined ? undefined : patchSetText(set)
+}
+
+/** A text's fingerprint, for the annotation that rolls the pod when its config changed. */
+const fingerprintOf = (text: string): string => createHash('sha256').update(text).digest('hex')
+
 /**
  * The environment the image reads, from the spec's fields — and the spec's `env` over them, as
  * written: what both set, `env` decides.
  */
 export const environmentOf = (spec: MinecraftDef.ServerSpec): Record<string, string> => {
+  const patches = patchesOf(spec)
   const named: Record<string, string | undefined> = {
     EULA: 'TRUE',
     TYPE: spec.type ?? DEFAULT_TYPE,
     VERSION: spec.version ?? DEFAULT_VERSION,
     MEMORY: spec.memory ?? DEFAULT_MEMORY,
-    MOTD: spec.motd,
-    DIFFICULTY: spec.difficulty,
-    MAX_PLAYERS: spec.maxPlayers === undefined ? undefined : String(spec.maxPlayers),
-    ONLINE_MODE: spec.onlineMode === undefined ? undefined : flag(spec.onlineMode),
+    MOTD: overruled(spec, 'motd') ? undefined : spec.motd,
+    DIFFICULTY: overruled(spec, 'difficulty') ? undefined : spec.difficulty,
+    MAX_PLAYERS:
+      spec.maxPlayers === undefined || overruled(spec, 'maxPlayers')
+        ? undefined
+        : String(spec.maxPlayers),
+    ONLINE_MODE:
+      spec.onlineMode === undefined || overruled(spec, 'onlineMode')
+        ? undefined
+        : flag(spec.onlineMode),
     OPS: listed(spec.ops),
     WHITELIST: listed(spec.whitelist),
     ENABLE_WHITELIST: listed(spec.whitelist) === undefined ? undefined : 'TRUE',
@@ -102,6 +130,10 @@ export const environmentOf = (spec: MinecraftDef.ServerSpec): Record<string, str
     SPIGET_RESOURCES: listed(spec.spiget?.map(String)),
     MODPACK: spec.modpack,
     REMOVE_OLD_MODS: spec.removeOldMods === undefined ? undefined : flag(spec.removeOldMods),
+    CUSTOM_SERVER_PROPERTIES: propertiesOf(spec),
+    PATCH_DEFINITIONS: patches === undefined ? undefined : `${PATCHES_DIR}/${PATCHES_FILE}`,
+    JVM_OPTS: listed(spec.jvmOpts)?.replaceAll(',', ' '),
+    USE_AIKAR_FLAGS: spec.aikarFlags === undefined ? undefined : flag(spec.aikarFlags),
   }
   const env: Record<string, string> = {}
 
@@ -185,6 +217,22 @@ const namespaceObject = (namespace: string): K8sDef.KubeObject => ({
   metadata: { name: namespace, labels: { [MANAGED_LABEL]: MANAGED_BY } },
 })
 
+/** The ConfigMap of a server's patch set, when it configures a file. */
+const configMap = (name: string, spec: MinecraftDef.ServerSpec): K8sDef.KubeObject[] => {
+  const patches = patchesOf(spec)
+
+  return patches === undefined
+    ? []
+    : [
+        {
+          apiVersion: 'v1',
+          kind: 'ConfigMap',
+          metadata: metaFor(configMapOf(name), spec.namespace, labelsOf(name)),
+          data: { [PATCHES_FILE]: patches },
+        },
+      ]
+}
+
 /** The Service players connect through. */
 const service = (name: string, spec: MinecraftDef.ServerSpec): K8sDef.KubeObject => ({
   apiVersion: 'v1',
@@ -211,6 +259,7 @@ const service = (name: string, spec: MinecraftDef.ServerSpec): K8sDef.KubeObject
  */
 const statefulSet = (name: string, spec: MinecraftDef.ServerSpec): K8sDef.KubeObject => {
   const labels = labelsOf(name)
+  const patches = patchesOf(spec)
 
   return {
     apiVersion: 'apps/v1',
@@ -221,7 +270,13 @@ const statefulSet = (name: string, spec: MinecraftDef.ServerSpec): K8sDef.KubeOb
       replicas: 1,
       selector: { matchLabels: labels },
       template: {
-        metadata: { labels },
+        metadata: {
+          labels,
+          // a changed patch set is a changed pod: the annotation rolls it
+          ...(patches === undefined
+            ? {}
+            : { annotations: { [CONFIG_HASH_ANNOTATION]: fingerprintOf(patches) } }),
+        },
         spec: {
           containers: [
             {
@@ -242,9 +297,17 @@ const statefulSet = (name: string, spec: MinecraftDef.ServerSpec): K8sDef.KubeOb
                 periodSeconds: READY_PERIOD_SECONDS,
                 failureThreshold: READY_FAILURES,
               },
-              volumeMounts: [{ name: DATA_VOLUME, mountPath: DATA_PATH }],
+              volumeMounts: [
+                { name: DATA_VOLUME, mountPath: DATA_PATH },
+                ...(patches === undefined
+                  ? []
+                  : [{ name: PATCHES_VOLUME, mountPath: PATCHES_DIR, readOnly: true }]),
+              ],
             },
           ],
+          ...(patches === undefined
+            ? {}
+            : { volumes: [{ name: PATCHES_VOLUME, configMap: { name: configMapOf(name) } }] }),
         },
       },
       volumeClaimTemplates: [{ metadata: { name: DATA_VOLUME }, spec: claimSpecOf(spec) }],
@@ -254,10 +317,12 @@ const statefulSet = (name: string, spec: MinecraftDef.ServerSpec): K8sDef.KubeOb
 
 /**
  * The objects a server renders to, in the order they are applied: the Namespace it names (one that
- * is there already is left as it is), the Service, then the server.
+ * is there already is left as it is), the ConfigMap of its patch set when it configures a file,
+ * the Service, then the server.
  */
 export const render = (name: string, spec: MinecraftDef.ServerSpec): K8sDef.KubeObject[] => [
   ...(spec.namespace === undefined ? [] : [namespaceObject(spec.namespace)]),
+  ...configMap(name, spec),
   service(name, spec),
   statefulSet(name, spec),
 ]

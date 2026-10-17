@@ -83,7 +83,17 @@ Pre-commit hook runs `moon run :check`.
   other than 25565) the name needs. `backup` is a Longhorn `VolumeSnapshot` of the claim, the world
   held still meanwhile (`save-all flush`, `save-off` … `save-on`); `--s3` / `backup = "s3"` push it
   through the `longhorn-backup` class; `restore` remakes the claim from a snapshot (the server has
-  to be down — it holds the claim — then `up`). The config is the ozaco TOML, discovered from
+  to be down — it holds the claim — then `up`). The WHOLE server configuration is the TOML's:
+  `[minecraft.<n>.properties]` is `server.properties` key by key (`CUSTOM_SERVER_PROPERTIES`; a key
+  a field also sets — `motd`, `difficulty`, `max-players`, `online-mode` — is the table's), and the
+  server's own files are nested tables — `paper` (`config/paper-global.yml`), `paperWorld`
+  (`config/paper-world-defaults.yml`), `bukkit`, `spigot`, and `files."<path>"` for any other
+  YAML/JSON/TOML/properties file under `/data` — rendered to ONE patch set (`$put` per leaf, JsonPath
+  in bracket notation; `internal/config.ts`) in the ConfigMap `<n>-config`, mounted at
+  `/patches`, applied by the image's `mc-image-helper patch` at start (`PATCH_DEFINITIONS`); a
+  changed set changes the pod-template annotation `ozc.dev/config-hash`, so `up` rolls the pod.
+  A table the file does not have is NOT made (the put fails at start). `jvmOpts` → `JVM_OPTS`,
+  `aikarFlags` → `USE_AIKAR_FLAGS`. The config is the ozaco TOML, discovered from
   `-C`/cwd up to home — `ozaco.toml`, or a fragment such as `.ozaco/minecraft.toml` beside
   `.ozaco/kube.toml`: the whole shape, with every field, is `plugins/minecraft/examples/minecraft.toml`
   (a test holds it to the schema).

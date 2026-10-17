@@ -4,6 +4,14 @@
  * validates into it); it renders to Kubernetes objects in `internal/manifests.ts`.
  */
 export namespace MinecraftDef {
+  /** A value a configuration file holds: a scalar, a list of scalars, or a table of more. */
+  export type ConfigValue = string | number | boolean | (string | number | boolean)[] | ConfigTree
+
+  /** A configuration file's content, as far as the spec sets it: nested as the file is. */
+  export interface ConfigTree {
+    [key: string]: ConfigValue
+  }
+
   /** How a server is reached from outside the cluster. */
   export type Expose = 'none' | 'nodeport' | 'loadbalancer'
 
@@ -70,6 +78,27 @@ export namespace MinecraftDef {
      * default) or `s3` (pushed to the external backup target through the `longhorn-backup` class).
      */
     backup?: 'snapshot' | 's3' | undefined
+    /**
+     * `server.properties`, any key as the file spells it (`view-distance`, `pvp`, `level-seed`):
+     * what the fields above also set (`motd`, `difficulty`, `max-players`, `online-mode`) is this
+     * table's when it names the key.
+     */
+    properties?: Record<string, string | number | boolean> | undefined
+    /**
+     * The server's own configuration files, nested as each file is: `paper` is
+     * `config/paper-global.yml`, `paperWorld` `config/paper-world-defaults.yml`, `bukkit`
+     * `bukkit.yml`, `spigot` `spigot.yml` — and `files` any other YAML, JSON, TOML or properties
+     * file under `/data`, by its path (`plugins/Essentials/config.yml`). Every leaf is put into the
+     * file at start, over what the file has; the rest of the file is left as it is.
+     */
+    paper?: ConfigTree | undefined
+    paperWorld?: ConfigTree | undefined
+    bukkit?: ConfigTree | undefined
+    spigot?: ConfigTree | undefined
+    files?: Record<string, ConfigTree> | undefined
+    /** Extra JVM arguments (`JVM_OPTS`), and Aikar's flags (`USE_AIKAR_FLAGS`). */
+    jvmOpts?: string[] | undefined
+    aikarFlags?: boolean | undefined
     /** Any other variable the image reads, as is — laid over what the fields above set. */
     env?: Record<string, string | number | boolean> | undefined
   }

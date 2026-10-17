@@ -70,6 +70,28 @@ export const SRV_SERVICE = '_minecraft._tcp'
 export const CLAIM_GONE_RETRIES = 30
 export const CLAIM_GONE_INTERVAL_MS = 2000
 
+/**
+ * Where the server's files are patched from: a ConfigMap of one patch set, mounted into the pod,
+ * named to the image through `PATCH_DEFINITIONS` (`mc-image-helper patch` applies it at start).
+ */
+export const PATCHES_DIR = '/patches'
+export const PATCHES_FILE = 'patches.json'
+export const PATCHES_VOLUME = 'patches'
+
+/** The files the spec's named tables stand for, under `/data`. */
+export const CONFIG_FILES = {
+  paper: 'config/paper-global.yml',
+  paperWorld: 'config/paper-world-defaults.yml',
+  bukkit: 'bukkit.yml',
+  spigot: 'spigot.yml',
+} as const
+
+/** The file formats the image can patch, by extension. */
+export const PATCHABLE = ['.yml', '.yaml', '.json', '.json5', '.toml', '.properties'] as const
+
+/** Pod-template annotation carrying the config's fingerprint: a changed config rolls the pod. */
+export const CONFIG_HASH_ANNOTATION = 'ozc.dev/config-hash'
+
 /** Standard labels stamped on every object a server generates (so `kube` can find its resources). */
 export const APP_LABEL = 'app.kubernetes.io/name'
 export const COMPONENT_LABEL = 'app.kubernetes.io/component'
