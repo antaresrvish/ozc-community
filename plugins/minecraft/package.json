@@ -1,6 +1,6 @@
 {
   "name": "@ozaco/ozc-plugin-minecraft",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "minecraft plugin for ozc — run Minecraft servers on the cluster ([minecraft.*] → StatefulSet/Service/PVC) via sdk:k8s",
   "type": "module",
