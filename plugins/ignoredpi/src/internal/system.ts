@@ -9,15 +9,16 @@ import { delimiter } from 'node:path'
 import { IgnoreDpiErrors } from '../const'
 import type { IgnoreDpiDef } from '../types'
 
+import { linuxHost } from './linux'
 import { macosHost } from './macos'
 import { windowsHost } from './windows'
 
 /**
  * The machine around the service: how its DNS is pointed at the service and given back, where the
  * ISP's resolver is found, and what keeps the service running — `macos.ts` (every network
- * service's DNS, a LaunchAgent) and `windows.ts` (an NRPT rule for every name, a scheduled task).
- * The commands ask the host of the machine they run on; elsewhere there is none, and only
- * `run --trial` runs.
+ * service's DNS, a LaunchAgent), `windows.ts` (an NRPT rule for every name, a scheduled task) and
+ * `linux.ts` (a drop-in of systemd-resolved for every name, a systemd unit). The commands ask the
+ * host of the machine they run on; elsewhere there is none, and only `run --trial` runs.
  */
 
 /** What keeps the service running: started with the machine (or the login), stopped, removed. */
@@ -39,8 +40,11 @@ export interface Agent {
 export interface Host {
   /** The machine as a message names it. */
   name: string
-  /** Fail, saying what to do, unless this process may change the machine's DNS. */
-  expectPrivileges: (what: string) => Operation<void>
+  /**
+   * Fail, saying what to do, unless this process may change the machine's DNS — and, with
+   * `ports`, bind the system's ports itself (`run`; Linux leaves those below 1024 to root).
+   */
+  expectPrivileges: (what: string, options?: { ports?: boolean }) => Operation<void>
   /** The resolver DHCP handed out — the ISP's — never the DNS set by hand (this service). */
   ispResolver: () => Operation<string | undefined>
   /**
@@ -64,7 +68,13 @@ export interface Host {
 
 /** The host of a machine (`process.platform`), `undefined` where the service cannot be kept yet. */
 export const hostOf = (os: string): Host | undefined =>
-  os === 'darwin' ? macosHost : os === 'win32' ? windowsHost : undefined
+  os === 'darwin'
+    ? macosHost
+    : os === 'win32'
+      ? windowsHost
+      : os === 'linux'
+        ? linuxHost
+        : undefined
 
 /** The host of this machine, and a `platform` failure where there is none. */
 export function* expectHost(what: string): Operation<Host> {
@@ -74,7 +84,7 @@ export function* expectHost(what: string): Operation<Host> {
   if (host === undefined) {
     return yield* fail(
       IgnoreDpiErrors.Platform,
-      `${what} is macOS and Windows only for now (this is ${os}): \`ozc ignoredpi run --trial\` runs the service without touching the machine's DNS`,
+      `${what} is macOS, Windows and Linux only (this is ${os}): \`ozc ignoredpi run --trial\` runs the service without touching the machine's DNS`,
     )
   }
 

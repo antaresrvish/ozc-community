@@ -62,7 +62,8 @@ describe('the machine, on Windows', () => {
   it('is one the service can be kept on, and bound on 127.0.0.1 unless the network is asked for', () => {
     expect(hostOf('win32')?.name).toBe('Windows')
     expect(hostOf('darwin')?.name).toBe('macOS')
-    expect(hostOf('linux')).toBeUndefined()
+    expect(hostOf('linux')?.name).toBe('Linux')
+    expect(hostOf('freebsd')).toBeUndefined()
     expect(listenOn('win32', false)).toBe('127.0.0.1')
     expect(listenOn('win32', true)).toBe('0.0.0.0')
     expect(listenOn('darwin', false)).toBe('0.0.0.0')

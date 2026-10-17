@@ -12,7 +12,8 @@ import { expectHost } from '../internal/system'
  * `ozc ignoredpi down` — stop the service and give the machine its DNS back. On macOS the service
  * gives it back itself on the way out; whatever it could not (a crash, a kill — on Windows, every
  * stop) is given back here from its state file — and what still points at this machine with
- * nothing saved for it goes back as well (a service to DHCP's; the NRPT rule removed). The agent
+ * nothing saved for it goes back as well (a service to DHCP's; the NRPT rule, the drop-in of
+ * systemd-resolved removed). The agent
  * is removed: it no longer starts at login or boot (`up` puts it back).
  */
 export const DownAction = defineAction(

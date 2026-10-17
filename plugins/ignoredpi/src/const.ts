@@ -3,10 +3,12 @@ import { createTags } from 'std:shared'
 /**
  * Failure tags for the `ignoredpi` plugin (`ozc:ignoredpi.*`):
  *   - `config`   — the `[ignoredpi]` config in `ozaco.toml` is invalid
- *   - `platform`  — the machine is not one the service can be kept on (macOS and Windows, for now)
- *   - `privilege` — the command changes what only an administrator may (Windows: the NRPT, the task)
- *   - `system`    — a system tool (`networksetup`, `launchctl`, `powershell`, `schtasks`) refused
- *                   what was asked of it
+ *   - `platform`  — the machine is not one the service can be kept on (macOS, Windows, Linux with
+ *                   systemd-resolved)
+ *   - `privilege` — the command changes what only an administrator may (Windows: the NRPT, the task;
+ *                   Linux: systemd-resolved, the unit, the ports below 1024)
+ *   - `system`    — a system tool (`networksetup`, `launchctl`, `powershell`, `schtasks`,
+ *                   `systemctl`, `resolvectl`) refused what was asked of it
  *   - `listen`    — a port the service needs is taken, or may not be bound
  *   - `service`   — the service is not installed, or not running
  *   - `resolve`   — a name could not be resolved by any upstream
@@ -135,7 +137,8 @@ export const STATE_INTERVAL_MS = 5000
 export const RECENT_NAMES = 20
 
 /**
- * The launchd label of the service (the scheduled task's name on Windows), and the file names under
+ * The launchd label of the service (the scheduled task's name on Windows, the systemd unit's on
+ * Linux), and the file names under
  * `~/.ozaco/ignoredpi/` — `task.xml` is the task as it was registered.
  */
 export const LABEL = 'com.ozaco.ignoredpi'
@@ -157,6 +160,20 @@ export const RESTART_DELAY_S = 10
 /** Windows: the SIDs of the mandatory labels an elevated process runs at (High, System). */
 export const ELEVATED_LABELS = ['S-1-16-12288', 'S-1-16-16384'] as const
 
+/**
+ * Linux: the unit that keeps the service (`com.ozaco.ignoredpi.service`, where systemd keeps a
+ * system's own units), and systemd-resolved's drop-in that points every name at it — under `/run`:
+ * a reboot forgets it, a crashed run's with it. What the state saves for it: nothing (the drop-in
+ * is given back by removing it).
+ */
+export const UNIT_FILE = `${LABEL}.service`
+export const UNIT_DIR = '/etc/systemd/system'
+export const UNIT_DIR_ENV = 'IGNOREDPI_UNIT_DIR'
+export const RESOLVED_DIR = '/run/systemd/resolved.conf.d'
+export const RESOLVED_DIR_ENV = 'IGNOREDPI_RESOLVED_DIR'
+export const RESOLVED_FILE = '99-ozaco-ignoredpi.conf'
+export const RESOLVED_SCOPE = 'every name (systemd-resolved)'
+
 /** Seams the suites (and a curious user) point at stand-ins: the system tools the service drives. */
 export const LAUNCHCTL_ENV = 'IGNOREDPI_LAUNCHCTL'
 export const LAUNCHCTL = '/bin/launchctl'
@@ -173,6 +190,15 @@ export const SCHTASKS_ENV = 'IGNOREDPI_SCHTASKS'
 export const SCHTASKS = 'schtasks.exe'
 export const WHOAMI_ENV = 'IGNOREDPI_WHOAMI'
 export const WHOAMI = 'whoami.exe'
+/** Linux's: by name, found on PATH (sudo's own `secure_path` under sudo). */
+export const SUDO_ENV = 'IGNOREDPI_SUDO'
+export const SUDO = 'sudo'
+export const SYSTEMCTL_ENV = 'IGNOREDPI_SYSTEMCTL'
+export const SYSTEMCTL = 'systemctl'
+export const RESOLVECTL_ENV = 'IGNOREDPI_RESOLVECTL'
+export const RESOLVECTL = 'resolvectl'
+export const IP_ENV = 'IGNOREDPI_IP'
+export const IP = 'ip'
 
 /** What `networksetup` writes in place of a service's DNS servers when it has none set by hand. */
 export const NO_DNS_SERVERS = "There aren't any DNS Servers set"

@@ -20,11 +20,12 @@ function* log(line: string): Operation<void> {
 
 /**
  * `ozc ignoredpi run` — the service itself, in the foreground: what the LaunchAgent (the scheduled
- * task on Windows) `up` writes starts. It takes its ports first (DNS 53, HTTP 80, HTTPS 443 — on
- * macOS on the wildcard address, the only one it lets a user bind them on, answering this machine
- * alone; elsewhere on 127.0.0.1), then points the machine's DNS at itself — every network
- * service's on macOS, an NRPT rule for every name on Windows; on the way out (Ctrl-C, `down`) it
- * gives it back. A run that crashed left what to give back in the state file, and the next one
+ * task on Windows, the systemd unit on Linux) `up` writes starts. It takes its ports first (DNS 53,
+ * HTTP 80, HTTPS 443 — on macOS on the wildcard address, the only one it lets a user bind them on,
+ * answering this machine alone; elsewhere on 127.0.0.1, root's on Linux), then points the
+ * machine's DNS at itself — every network service's on macOS, an NRPT rule for every name on
+ * Windows, a drop-in of systemd-resolved on Linux; on the way out (Ctrl-C, `down`) it gives it
+ * back. A run that crashed left what to give back in the state file, and the next one
  * takes it from there.
  *
  * `--trial` leaves the machine's DNS alone and `--dns`/`--https`/`--http` move it off the system's
@@ -61,7 +62,7 @@ export const RunAction = defineAction(
     if (system) {
       const required = yield* expectHost('pointing the machine’s DNS at the service')
 
-      yield* required.expectPrivileges('ignoredpi run')
+      yield* required.expectPrivileges('ignoredpi run', { ports: true })
     }
 
     const previous = yield* readState()

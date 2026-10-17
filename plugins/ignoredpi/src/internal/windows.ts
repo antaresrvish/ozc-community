@@ -90,7 +90,7 @@ function* powershell(what: string, script: string): Operation<string> {
     encodedOf(script),
   ]
 
-  return yield* execTool(tool, args, `(${what})`)
+  return yield* execTool(tool, args, { shown: `(${what})` })
 }
 
 function* schtasks(...args: string[]): Operation<string> {

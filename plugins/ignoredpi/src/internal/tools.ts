@@ -5,7 +5,8 @@ import { fail } from 'std:result'
 import { IgnoreDpiErrors } from '../const'
 
 /**
- * The system tools the service drives (`networksetup`, `launchctl`, `powershell`, `schtasks` …),
+ * The system tools the service drives (`networksetup`, `launchctl`, `powershell`, `schtasks`,
+ * `systemctl`, `resolvectl` …),
  * each through a seam the suites — and a curious user — point at a stand-in.
  */
 
@@ -21,11 +22,16 @@ export function* toolOf(env: string, fallback: string): Operation<string> {
 }
 
 /**
- * Run `tool`, its stdout as text; a non-zero exit is a `system` failure carrying its stderr, the
- * call named as `shown`.
+ * Run `tool` — `stdin` written to it — its stdout as text; a non-zero exit is a `system` failure
+ * carrying its stderr, the call named as `shown`.
  */
-export function* execTool(tool: string, args: readonly string[], shown: string): Operation<string> {
-  const ran = yield* IO.actions.exec(tool, args)
+export function* execTool(
+  tool: string,
+  args: readonly string[],
+  options: { shown: string; stdin?: string | undefined },
+): Operation<string> {
+  const { shown, stdin } = options
+  const ran = yield* IO.actions.exec(tool, args, stdin === undefined ? {} : { stdin })
   const stdout = new TextDecoder().decode(ran.stdout)
 
   if (!ran.success) {
@@ -46,5 +52,5 @@ export function* runTool(
   fallback: string,
   args: readonly string[],
 ): Operation<string> {
-  return yield* execTool(yield* toolOf(env, fallback), args, args.join(' '))
+  return yield* execTool(yield* toolOf(env, fallback), args, { shown: args.join(' ') })
 }

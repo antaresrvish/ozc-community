@@ -33,7 +33,9 @@ function* settled(before: number | undefined): Operation<IgnoreDpiDef.State | un
  * `ozc ignoredpi up` — keep the service running on this machine: write what starts it — on macOS
  * a LaunchAgent (`~/Library/LaunchAgents/com.ozaco.ignoredpi.plist`, `ozc ignoredpi run` at every
  * login and again whenever it stops), on Windows a scheduled task (`com.ozaco.ignoredpi`, from
- * boot, run again whenever it stops; an administrator's terminal registers it) — and start it.
+ * boot, run again whenever it stops; an administrator's terminal registers it), on Linux a systemd
+ * unit (`/etc/systemd/system/com.ozaco.ignoredpi.service`, as root from boot; `sudo` asks for the
+ * password) — and start it.
  * Once it runs, the machine's DNS points at it: every app — a browser, the Discord app, a game
  * launcher — reaches blocked names through it with no proxy setting of its own. Run again after
  * changing `[ignoredpi]`: the service restarts.
@@ -42,7 +44,7 @@ export const UpAction = defineAction(
   {
     inherits: placeInput,
     description:
-      'Start the service and keep it running (LaunchAgent, scheduled task): ignoredpi up',
+      'Start the service and keep it running (LaunchAgent, scheduled task, systemd): ignoredpi up',
   },
   function* (ctx) {
     const host = yield* expectHost('ignoredpi up')

@@ -119,7 +119,7 @@ Pre-commit hook runs `moon run :check`.
   `IGNOREDPI_DSCACHEUTIL`, `IGNOREDPI_OZC`. A socket belongs to the scope it is opened in — never
   open one inside a `race` branch (the race's end closes it).
 
-  The commands go through the host of the machine (`internal/system.ts`: `macos.ts`,
+  The commands go through the host of the machine (`internal/system.ts`: `macos.ts`, `linux.ts`,
   `windows.ts`). On Windows the ports are bound on 127.0.0.1 (no firewall question; `lan = true`
   binds the wildcard), and the DNS is ONE NRPT rule — every name (`.`) to 127.0.0.1, comment
   `ozaco ignoredpi` — not each adapter's servers: an adapter's IPv6 DNS (the router's `fe80::1`)
@@ -144,7 +144,37 @@ Pre-commit hook runs `moon run :check`.
   media, UDP to the address the socket names, passes the DPI untouched), and `down` left no task,
   rule or state behind.
 
-  Not yet: `up`/`down` on Linux (systemd + resolved); `run --trial` runs anywhere.
+  On Linux (`linux.ts`) the DNS is ONE drop-in of systemd-resolved,
+  `/run/systemd/resolved.conf.d/99-ozaco-ignoredpi.conf`: `DNS=127.0.0.1`, `Domains=~.` (DNSSEC
+  and DNS over TLS off for it) — not each link's servers, which NetworkManager writes again
+  whenever a link comes up. A routing domain of `~.` outranks a link that is only the default
+  route, so the router's servers (its `fe80::1` too) are not asked, while a VPN's own names
+  (Tailscale's `~ts.net`) still go to it. Under `/run`, a reboot forgets it; giving it back is
+  removing it (nothing saved), then `systemctl --no-block reload-or-restart systemd-resolved` —
+  NEVER waiting there: the unit is `After=systemd-resolved.service`, so inside its own stop (the
+  service giving the DNS back on SIGTERM) resolved's job waits for that stop, and a waiting
+  `systemctl` held it until systemd SIGABRTed and SIGKILLed it (seen on Fedora 44). The ISP
+  resolver is the first IPv4 server of the link the default route leaves by (`ip -j route show
+  default`, `resolvectl dns|domain|default-route` — text, wrapped lines joined back; no `--json`:
+  Ubuntu 24.04's resolvectl has none). `up` writes the system unit
+  `/etc/systemd/system/com.ozaco.ignoredpi.service`: root (the ports below 1024 and resolved are
+  root's), `OZC_HOME` the user's home (the plugin, config and state are the user's `~/.ozaco`),
+  `Restart=always` 10 s apart, `ExecStart=/bin/sh -c 'exec "$0" ignoredpi run >>"$1" 2>&1'` — on
+  Fedora SELinux lets systemd execute no file under a home, a shell it starts may (and it opens the
+  log for the same reason). `up` and `down` run as the user and ask `sudo` (`sudo -v` once, the
+  password on the terminal) for what they change; `run` binds the ports itself, so it has to BE
+  root (`sudo OZC_HOME="$HOME" "$(command -v ozc)" ignoredpi run`); `status` and `check` need
+  neither. Seams: `IGNOREDPI_SUDO`, `IGNOREDPI_SYSTEMCTL`, `IGNOREDPI_RESOLVECTL`, `IGNOREDPI_IP`,
+  `IGNOREDPI_RESOLVED_DIR`, `IGNOREDPI_UNIT_DIR`. A trial on Linux takes `--dns 5354`, not 5353
+  (avahi's mDNS holds it).
+
+  Run on Fedora 44 (systemd 259, SELinux enforcing) on Türk Telekom (2026-10-17): `up` took the
+  DNS (`resolvectl query discord.com` → 127.0.0.1, the router's servers left on the link, Tailscale's
+  names to Tailscale), the unit came up through the shell under SELinux, Discord and the blocked
+  sites opened. `lan = true` is not tried on Linux: the wildcard's 53 may collide with resolved's
+  stub on 127.0.0.53.
+
+  `run --trial` runs anywhere.
 
 ## Release
 
