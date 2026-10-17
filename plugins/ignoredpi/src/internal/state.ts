@@ -1,17 +1,31 @@
+import { ozacoDir } from 'sdk:core'
+
 import { attempt, call } from 'std:effect'
 import type { Operation } from 'std:effect'
 import { IO } from 'std:io'
 import { isFailure } from 'std:result'
 
+import { LOG_FILE, STATE_DIR, STATE_FILE } from '../const'
 import type { IgnoreDpiDef } from '../types'
-
-import { stateDir, stateFile } from './system'
 
 /**
  * `~/.ozaco/ignoredpi/state.json`: what the running service writes for `status`, and — above all
  * — the DNS each network service had before it took them, so that `down` (or the next start)
  * gives them back even after a crash.
  */
+
+/** `~/.ozaco/ignoredpi/` and the files in it. */
+export function* stateDir(): Operation<string> {
+  return yield* IO.actions.join(yield* ozacoDir(), STATE_DIR)
+}
+
+export function* stateFile(): Operation<string> {
+  return yield* IO.actions.join(yield* stateDir(), STATE_FILE)
+}
+
+export function* logFile(): Operation<string> {
+  return yield* IO.actions.join(yield* stateDir(), LOG_FILE)
+}
 
 /** The state the last run left, `undefined` when there is none (or it cannot be read). */
 export function* readState(): Operation<IgnoreDpiDef.State | undefined> {
@@ -48,7 +62,13 @@ export function* tailOf(file: string, lines: number): Operation<string> {
   return isFailure(text) ? '' : text.value.trimEnd().split('\n').slice(-lines).join('\n')
 }
 
-/** Whether a process is alive (signal 0 delivers nothing; it only asks). */
+/**
+ * Whether a process is alive (signal 0 delivers nothing; it only asks). `EPERM` is a process
+ * that is there but not ours to signal — on Windows, the elevated service asked from a terminal
+ * that is not.
+ */
 export function* isAlive(pid: number): Operation<boolean> {
-  return !isFailure(yield* attempt(call(() => process.kill(pid, 0))))
+  const asked = yield* attempt(call(() => process.kill(pid, 0)))
+
+  return !isFailure(asked) || (asked.raw as { code?: unknown } | undefined)?.code === 'EPERM'
 }

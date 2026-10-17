@@ -36,7 +36,10 @@ export namespace IgnoreDpiDef {
   /** Why a name got its verdict. */
   export type Reason = 'list' | 'direct-list' | 'sinkhole' | 'isp' | 'no-isp'
 
-  /** What `networksetup` had for each network service before the service took its DNS. */
+  /**
+   * What each place the service took the DNS of had before: on macOS each network service's
+   * servers as `networksetup` had them; on Windows the NRPT, with nothing to save.
+   */
   export type SavedDns = Record<string, string[]>
 
   /** What the running service writes to `~/.ozaco/ignoredpi/state.json` for `status` and `down`. */

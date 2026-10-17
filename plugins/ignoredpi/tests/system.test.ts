@@ -1,6 +1,7 @@
 /**
- * The machine's DNS taken and given back, through a `networksetup` of the suite's own (the
- * `IGNOREDPI_NETWORKSETUP` seam): two services, one with servers set by hand, one on DHCP's.
+ * The machine's DNS taken and given back on macOS, through a `networksetup` of the suite's own (the
+ * `IGNOREDPI_NETWORKSETUP` seam): two services, one with servers set by hand, one on DHCP's. The
+ * stand-ins are shell scripts: on Windows the suite is skipped.
  */
 import { run } from 'std:effect'
 import { isFailure } from 'std:result'
@@ -12,7 +13,7 @@ import { join } from 'node:path'
 
 import { BunIO } from 'std:io/impl/bun'
 
-import { giveDnsBack, takeDns } from '../src/internal/system'
+import { giveDnsBack, takeDns } from '../src/internal/macos'
 import type { IgnoreDpiDef } from '../src/types'
 
 const dir = mkdtempSync(join(tmpdir(), 'ignoredpi-system-'))
@@ -55,7 +56,7 @@ afterAll(() => {
   rmSync(dir, { recursive: true, force: true })
 })
 
-describe("the machine's DNS", () => {
+describe.skipIf(process.platform === 'win32')("the machine's DNS", () => {
   it('is taken by every service on a device — what each had saved before it is changed — and given back', async () => {
     const saved: IgnoreDpiDef.SavedDns = {}
     const kept: IgnoreDpiDef.SavedDns[] = []

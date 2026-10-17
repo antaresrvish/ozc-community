@@ -51,7 +51,7 @@ export const placeInput = z.object({
 export const placeShort = { cwd: 'C' }
 
 /**
- * `run`: the service in the foreground, as the LaunchAgent starts it. `--trial` leaves the
+ * `run`: the service in the foreground, as the agent starts it. `--trial` leaves the
  * machine's DNS alone, and `--dns`/`--https`/`--http` move it off the system's ports — a try of
  * the service beside whatever runs, or the suites.
  */

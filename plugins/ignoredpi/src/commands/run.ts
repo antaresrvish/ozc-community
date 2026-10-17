@@ -7,10 +7,10 @@ import { isFailure } from 'std:result'
 
 import { STATE_INTERVAL_MS } from '../const'
 import { placeInput, runInput } from '../internal/schemas'
-import { SYSTEM_PORTS, resolverOf, serve } from '../internal/service'
+import { SYSTEM_PORTS, listenOn, resolverOf, serve } from '../internal/service'
 import { loadSettings } from '../internal/settings'
 import { isAlive, readState, removeState, writeState } from '../internal/state'
-import { dhcpResolver, expectMacos, giveDnsBack, takeDns } from '../internal/system'
+import { expectHost, hostOf } from '../internal/system'
 import type { IgnoreDpiDef } from '../types'
 
 /** A line of the service's log, stamped. */
@@ -19,11 +19,13 @@ function* log(line: string): Operation<void> {
 }
 
 /**
- * `ozc ignoredpi run` — the service itself, in the foreground: what the LaunchAgent `up` writes
- * starts. It takes its ports first (DNS 53, HTTP 80, HTTPS 443 — on the wildcard address, the only
- * one macOS lets a user bind them on, answering this machine alone), then points every network
- * service's DNS at itself; on the way out (Ctrl-C, `down`) it gives each its DNS back. A run that
- * crashed left what to give back in the state file, and the next one takes it from there.
+ * `ozc ignoredpi run` — the service itself, in the foreground: what the LaunchAgent (the scheduled
+ * task on Windows) `up` writes starts. It takes its ports first (DNS 53, HTTP 80, HTTPS 443 — on
+ * macOS on the wildcard address, the only one it lets a user bind them on, answering this machine
+ * alone; elsewhere on 127.0.0.1), then points the machine's DNS at itself — every network
+ * service's on macOS, an NRPT rule for every name on Windows; on the way out (Ctrl-C, `down`) it
+ * gives it back. A run that crashed left what to give back in the state file, and the next one
+ * takes it from there.
  *
  * `--trial` leaves the machine's DNS alone and `--dns`/`--https`/`--http` move it off the system's
  * ports: `dig @127.0.0.1 -p 5353 discord.com`, then
@@ -36,7 +38,7 @@ export const RunAction = defineAction(
       'Run the service in the foreground: ignoredpi run [--trial] [--dns n] [--https n] [--http n]',
     input: runInput,
     examples: [
-      { run: 'ignoredpi run', note: 'what the LaunchAgent runs: takes DNS, 80 and 443' },
+      { run: 'ignoredpi run', note: 'what the agent runs: takes DNS, 80 and 443' },
       {
         run: 'ignoredpi run --trial --dns 5353 --https 8443 --http 8080',
         note: 'a trial on ports of its own, the machine’s DNS untouched',
@@ -49,25 +51,31 @@ export const RunAction = defineAction(
       dns: ctx.dns ?? SYSTEM_PORTS.dns,
       http: ctx.http ?? SYSTEM_PORTS.http,
       https: ctx.https ?? SYSTEM_PORTS.https,
+      // a trial on a TLS port of its own takes none of the others (8443 is the usual one)
+      tls: ctx.https === undefined ? SYSTEM_PORTS.tls : [],
     }
     const system = !ctx.trial
+    const { os } = yield* IO.actions.platform()
+    const host = hostOf(os)
 
     if (system) {
-      yield* expectMacos('pointing the machine’s DNS at the service')
+      const required = yield* expectHost('pointing the machine’s DNS at the service')
+
+      yield* required.expectPrivileges('ignoredpi run')
     }
 
     const previous = yield* readState()
 
     // the ISP's resolver: the config's, else what DHCP handed out — never the DNS set by hand,
     // which is this service once it runs
-    const { os } = yield* IO.actions.platform()
-    const isp = settings.isp ?? (os === 'darwin' ? yield* dhcpResolver() : undefined)
+    const isp = settings.isp ?? (host === undefined ? undefined : yield* host.ispResolver())
     const resolver = resolverOf(settings, isp)
-    const forwarder = yield* serve({ settings, resolver, ports, log })
+    const hostname = listenOn(os, settings.lan ?? false)
+    const forwarder = yield* serve({ settings, resolver, ports, hostname, log })
     const sinkholes = yield* resolver.learn()
 
     yield* log(
-      `ignoredpi up: dns :${ports.dns}, https :${ports.https}, http :${ports.http}; isp ${isp ?? 'none'}; sinkholes ${sinkholes.join(', ')}; split ${settings.split ?? 'record'}`,
+      `ignoredpi up: dns ${hostname}:${ports.dns}, https :${ports.https}${ports.tls.map(port => ` :${port}`).join('')}, http :${ports.http}; isp ${isp ?? 'none'}; sinkholes ${sinkholes.join(', ')}; split ${settings.split ?? 'record'}`,
     )
 
     const savedDns: IgnoreDpiDef.SavedDns = {}
@@ -88,13 +96,13 @@ export const RunAction = defineAction(
       recent: forwarder.stats.recent,
     })
 
-    if (system) {
+    if (system && host !== undefined) {
       // a run that died left the DNS pointing here; what it saved is the truth, not what is set now
       const crashed =
         previous !== undefined && !(yield* isAlive(previous.pid)) ? previous.savedDns : undefined
 
       yield* ensure(function* () {
-        const restored = yield* attempt(giveDnsBack(savedDns))
+        const restored = yield* attempt(host.giveDnsBack(savedDns))
 
         yield* attempt(removeState())
         yield* attempt(
@@ -106,8 +114,8 @@ export const RunAction = defineAction(
         )
       })
 
-      // on disk before each service is changed: a crash at any point still knows what to give back
-      yield* takeDns(crashed, savedDns, () => writeState(stateNow()))
+      // on disk before each change: a crash at any point still knows what to give back
+      yield* host.takeDns(crashed, savedDns, () => writeState(stateNow()))
       yield* log(`DNS of ${Object.keys(savedDns).join(', ') || 'no service'} now points here`)
 
       yield* spawn(function* () {

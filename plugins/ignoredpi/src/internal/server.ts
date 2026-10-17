@@ -24,6 +24,8 @@ const framed = (message: Uint8Array): Uint8Array => {
 export interface DnsServerOptions {
   resolver: Resolver
   port: number
+  /** The address bound (the wildcard by default). */
+  hostname?: string | undefined
   admits: (peer: string) => boolean
   log: (line: string) => Operation<void>
 }
@@ -48,6 +50,7 @@ export function* bound<T>(what: string, port: number, bind: () => Operation<T>):
  */
 export function* serveDns(options: DnsServerOptions): Operation<void> {
   const { resolver, port, admits, log } = options
+  const hostname = options.hostname ?? WILDCARD
 
   function* answerDatagram(socket: IODef.UdpSocket, datagram: IODef.UdpDatagram) {
     const query = parseQuery(datagram.data)
@@ -112,12 +115,10 @@ export function* serveDns(options: DnsServerOptions): Operation<void> {
     yield* attempt(client.close())
   }
 
-  const udp = yield* bound('DNS (UDP)', port, () =>
-    IO.actions.udpBind({ port, hostname: WILDCARD }),
-  )
+  const udp = yield* bound('DNS (UDP)', port, () => IO.actions.udpBind({ port, hostname }))
 
   yield* bound('DNS (TCP)', port, () =>
-    IO.actions.tcpListen({ port, hostname: WILDCARD }, function* (client) {
+    IO.actions.tcpListen({ port, hostname }, function* (client) {
       yield* attempt(answerStream(client))
     }),
   )

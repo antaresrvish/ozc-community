@@ -33,7 +33,7 @@ const UPSTREAM: Record<string, string> = {
 const BLOCK_PAGE = '203.0.113.9'
 
 const base = 40_000 + Math.floor(Math.random() * 20_000)
-const ports = { dns: base, http: base + 1, https: base + 2 }
+const ports = { dns: base, http: base + 1, https: base + 2, tls: [base + 3] }
 const received: Uint8Array[] = []
 
 let service: Task<void> | undefined
@@ -149,7 +149,7 @@ beforeAll(async () => {
       settings: {},
       resolver,
       ports,
-      targets: { http: target.port, https: target.port },
+      targets: { http: target.port, https: target.port, tls: target.port },
       *log() {},
     })
     resolve()
@@ -211,6 +211,13 @@ describe('the forwarder', () => {
 
     expect(carried.records).toBe(2)
     expect(carried.body).toEqual(joinedOf([hello.subarray(5)]))
+  })
+
+  it('reaches a server on a TLS port of its own the same way — Discord’s voice on 2083', async () => {
+    const before = received.length
+
+    expect(await exchange(ports.tls[0] ?? 0, clientHelloOf('blocked.test'))).toBe('tls pong')
+    expect(handshakeOf(received[before] ?? new Uint8Array()).records).toBe(2)
   })
 
   it('reaches the host an HTTP head names, the head as it was but for the header’s name', async () => {

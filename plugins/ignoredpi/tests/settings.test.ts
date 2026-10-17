@@ -6,10 +6,10 @@ import { describe, expect, it } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { dnsServersOf, plistOf, servicesOf } from '../src/internal/macos'
 import { isInside, isLoopback, isPrivate, isUnder, normalizeName } from '../src/internal/names'
 import { sinkholesOf } from '../src/internal/resolver'
 import { SettingsSchema } from '../src/internal/schemas'
-import { dnsServersOf, plistOf, servicesOf } from '../src/internal/system'
 
 const LISTING = `An asterisk (*) denotes that a network service is disabled.
 (1) USB 10/100 LAN

@@ -14,7 +14,7 @@ import { checkInput, placeInput } from '../internal/schemas'
 import { resolverOf } from '../internal/service'
 import { loadSettings } from '../internal/settings'
 import { readState } from '../internal/state'
-import { dhcpResolver } from '../internal/system'
+import { hostOf } from '../internal/system'
 
 import { tabled } from './status'
 
@@ -46,11 +46,11 @@ export const CheckAction = defineAction(
   },
   function* (ctx) {
     const settings = yield* loadSettings(ctx.cwd)
-    const { os } = yield* IO.actions.platform()
+    const host = hostOf((yield* IO.actions.platform()).os)
     const isp =
       settings.isp ??
       (yield* readState())?.isp ??
-      (os === 'darwin' ? yield* dhcpResolver() : undefined)
+      (host === undefined ? undefined : yield* host.ispResolver())
     const resolver = resolverOf(settings, isp)
     const split = settings.split ?? 'record'
 

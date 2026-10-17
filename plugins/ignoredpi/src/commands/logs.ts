@@ -5,7 +5,7 @@ import { IO } from 'std:io'
 import { isFailure } from 'std:result'
 
 import { logsInput, logsShort } from '../internal/schemas'
-import { logFile } from '../internal/system'
+import { logFile } from '../internal/state'
 
 /** How often a followed log is looked at again. */
 const FOLLOW_INTERVAL_MS = 500

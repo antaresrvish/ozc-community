@@ -99,7 +99,11 @@ Pre-commit hook runs `moon run :check`.
   block page (the sinkholes: BTK's built in, others learned at start from canary names) — is
   answered with this machine, A only (no AAAA, no HTTPS record). Its forwarder on 443/80 reads the
   name from the TLS hello (HTTP `Host`), connects to the real address and sends the hello as TWO
-  TLS records cut inside the name; the TLS is never opened. Measured on Türk Telekom (2026-10-17):
+  TLS records cut inside the name; the TLS is never opened. It also takes Cloudflare's other HTTPS
+  ports (`TLS_PORTS`: 2053, 2083, 2087, 2096, 8443), each forwarded to the same port: Discord's
+  voice RTC socket is `wss://c-<iata>NN-<hex>.discord.media:2083` — with nothing on 127.0.0.1:2083
+  a voice channel never connects (seen in `%APPDATA%\discord\logs\renderer_js.log`). One already
+  taken is logged and passed over; a trial with `--https` moved takes none. Measured on Türk Telekom (2026-10-17):
   TCP segmentation (SpoofDPI's way) is reset, the record split passes; for HTTP the header name
   `hoSt` passes where `Host`/`host` do not. macOS lets a user bind 53/80/443 on the wildcard
   only, so the service binds `0.0.0.0` and drops anything not from loopback (`lan = true` admits
@@ -115,7 +119,32 @@ Pre-commit hook runs `moon run :check`.
   `IGNOREDPI_DSCACHEUTIL`, `IGNOREDPI_OZC`. A socket belongs to the scope it is opened in — never
   open one inside a `race` branch (the race's end closes it).
 
-  Not yet: `up`/`down` on Linux (systemd + resolved) and Windows; `run --trial` runs anywhere.
+  The commands go through the host of the machine (`internal/system.ts`: `macos.ts`,
+  `windows.ts`). On Windows the ports are bound on 127.0.0.1 (no firewall question; `lan = true`
+  binds the wildcard), and the DNS is ONE NRPT rule — every name (`.`) to 127.0.0.1, comment
+  `ozaco ignoredpi` — not each adapter's servers: an adapter's IPv6 DNS (the router's `fe80::1`)
+  would go around those, the NRPT is asked first whatever the adapter. Giving it back is removing
+  the rule (found by its comment, nothing saved). The ISP resolver is the registry's
+  `DhcpNameServer` of the adapter the default route leaves by. `up` registers the scheduled task
+  `com.ozaco.ignoredpi` from `~/.ozaco/ignoredpi/task.xml` (UTF-16): `S4U` (no window, no stored
+  password), highest level, at boot and logon, no time limit, on battery too; it runs `cmd` looping
+  `ozc ignoredpi run >> log`, 10 s apart (a task's own restart counts only a failed start). Windows
+  has no SIGTERM: ending the task kills, so `down` gives the DNS back itself. The NRPT and the task
+  need an administrator — `up`, `down` and `run` check `whoami /groups` for the High label (SIDs,
+  no language) and say to open an elevated terminal; `status` and `check` need none (a pid that
+  answers `EPERM` is alive). PowerShell is run with `-EncodedCommand` (UTF-16LE base64: no quoting)
+  and prints JSON (its cmdlets answer alike in every language — never parse `netsh`/`schtasks`
+  text). Seams: `IGNOREDPI_POWERSHELL`, `IGNOREDPI_SCHTASKS`, `IGNOREDPI_WHOAMI`. The macOS suite's
+  stand-ins are shell scripts: it is skipped on Windows. `nslookup` asks the adapter's server
+  directly and never shows the NRPT; `Resolve-DnsName` does.
+
+  Run as administrator on Windows 11 on Türk Telekom (2026-10-17): `up` took the DNS
+  (`Resolve-DnsName discord.com` → 127.0.0.1: the bare `.` rule catches every name), Discord and
+  the blocked sites opened, voice channels connect once the RTC socket's 2083 is forwarded (the
+  media, UDP to the address the socket names, passes the DPI untouched), and `down` left no task,
+  rule or state behind.
+
+  Not yet: `up`/`down` on Linux (systemd + resolved); `run --trial` runs anywhere.
 
 ## Release
 

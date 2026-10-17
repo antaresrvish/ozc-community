@@ -21,8 +21,9 @@ import { placeInput, placeShort } from './internal/schemas'
  * the name the client meant from its TLS hello (or HTTP Host), connects to the real address, and
  * sends that hello cut in two TLS records, the cut inside the name: the DPI reads one record at a
  * time and never sees the name whole. The TLS itself is never opened — the app talks to the real
- * server, certificate and all. On macOS `up` keeps it running as a LaunchAgent and `down` gives
- * the DNS back (`internal/system.ts`); elsewhere `run --trial` runs it.
+ * server, certificate and all. `up` keeps it running — a LaunchAgent on macOS, a scheduled task
+ * on Windows — and `down` gives the DNS back (`internal/system.ts`); elsewhere `run --trial` runs
+ * it.
  */
 export const command = defineCommand({
   name: 'ignoredpi',

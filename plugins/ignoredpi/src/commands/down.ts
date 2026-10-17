@@ -1,29 +1,19 @@
 import { defineAction } from 'cli:command'
 import { Terminal } from 'cli:core'
 import { attempt, call, sleep } from 'std:effect'
-import { IO } from 'std:io'
 import { isFailure } from 'std:result'
 
-import { LOOPBACK, SETTLE_INTERVAL_MS, SETTLE_TRIES } from '../const'
+import { SETTLE_INTERVAL_MS, SETTLE_TRIES } from '../const'
 import { placeInput } from '../internal/schemas'
 import { isAlive, readState, removeState } from '../internal/state'
-import {
-  agentState,
-  dnsOf,
-  expectMacos,
-  giveDnsBack,
-  networkServices,
-  plistFile,
-  setDns,
-  stopAgent,
-} from '../internal/system'
+import { expectHost } from '../internal/system'
 
 /**
- * `ozc ignoredpi down` — stop the service and give every network service its DNS back. The
- * service gives it back itself on the way out; whatever it could not (a crash, a kill) is given
- * back here from its state file — and a service still pointing at this machine with nothing
- * saved for it goes back to what DHCP hands out. The LaunchAgent is removed: it no longer starts
- * at login (`up` puts it back).
+ * `ozc ignoredpi down` — stop the service and give the machine its DNS back. On macOS the service
+ * gives it back itself on the way out; whatever it could not (a crash, a kill — on Windows, every
+ * stop) is given back here from its state file — and what still points at this machine with
+ * nothing saved for it goes back as well (a service to DHCP's; the NRPT rule removed). The agent
+ * is removed: it no longer starts at login or boot (`up` puts it back).
  */
 export const DownAction = defineAction(
   {
@@ -31,12 +21,14 @@ export const DownAction = defineAction(
     description: 'Stop the service and give the DNS back: ignoredpi down',
   },
   function* () {
-    yield* expectMacos('ignoredpi down')
+    const host = yield* expectHost('ignoredpi down')
+
+    yield* host.expectPrivileges('ignoredpi down')
 
     const before = yield* readState()
 
-    if ((yield* agentState()).loaded) {
-      yield* stopAgent()
+    if ((yield* host.agent.state()).installed) {
+      yield* host.agent.stop()
     }
 
     // a foreground `ignoredpi run` holds the DNS as well: it is asked to stop the same way
@@ -61,24 +53,19 @@ export const DownAction = defineAction(
     const given = left === undefined ? Object.keys(before?.savedDns ?? {}) : []
 
     if (left !== undefined) {
-      given.push(...(yield* giveDnsBack(left.savedDns)))
+      given.push(...(yield* host.giveDnsBack(left.savedDns)))
       yield* removeState()
     }
 
-    for (const service of yield* networkServices()) {
-      if ((yield* dnsOf(service.name)).includes(LOOPBACK)) {
-        yield* setDns(service.name, [])
-        given.push(`${service.name} (to DHCP's)`)
-      }
-    }
+    given.push(...(yield* host.sweepDns()))
 
-    const plist = yield* plistFile()
-    const removed = yield* attempt(IO.actions.rm(plist, { force: true }))
+    const where = yield* host.agent.where()
+    const removed = yield* attempt(host.agent.remove())
 
     yield* Terminal.actions.write(
       [
         `✓ ignoredpi is down${given.length === 0 ? '' : ` — DNS given back to ${given.join(', ')}`}`,
-        isFailure(removed) ? `  (could not remove ${plist}: ${removed.message})` : '',
+        isFailure(removed) ? `  (could not remove ${where}: ${removed.message})` : '',
       ]
         .filter(line => line !== '')
         .join('\n')
