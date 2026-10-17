@@ -1,0 +1,30 @@
+# The whole [ignoredpi] table, every field of it (a test holds it to the schema). Every field is
+# optional: with none of them the service sends Discord's names, and every name the ISP answers
+# with its block page, through itself. The service is the machine's, so the table lives where it
+# is found from home — `~/ozaco.toml`, or this file as `~/.ozaco/ignoredpi.toml`. After a change,
+# `ozc ignoredpi up` restarts the service with it.
+
+[ignoredpi]
+# names sent through the forwarder beside the built-in ones, each with every name under it — the
+# ones the DPI resets whose DNS the ISP does not poison (`ozc ignoredpi check <name>` tells)
+domains = ["wattpad.com", "roblox.com", "rbxcdn.com"]
+
+# names never sent through, whatever the lists or the ISP say
+direct = ["turkiye.gov.tr"]
+
+# DNS over HTTPS, by address (the DPI sees no name in a request to an address), tried in order
+upstreams = ["https://1.1.1.1/dns-query", "https://8.8.8.8/dns-query"]
+
+# the ISP's resolver blocked names are told by — what DHCP hands out when unset (the router)
+isp = "192.168.1.1"
+
+# the addresses the ISP answers a blocked name with, beside the BTK's block page and the ones
+# learned at start
+sinkholes = ["195.175.254.2"]
+
+# how the TLS hello is cut: "record" (two TLS records — what passes Türk Telekom's DPI),
+# "segment" (two TCP segments, SpoofDPI's way) or "both"
+split = "record"
+
+# answer the other devices on the network too: point their DNS at this machine's address
+lan = false

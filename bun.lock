@@ -18,9 +18,23 @@
         "typescript": "^7.0.2",
       },
     },
+    "plugins/ignoredpi": {
+      "name": "@ozaco/ozc-plugin-ignoredpi",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@ozaco/cli": "catalog:ozaco",
+        "@ozaco/devkit": "catalog:ozaco",
+        "@ozaco/ozc-devkit": "catalog:ozaco",
+        "@ozaco/ozc-sdk": "catalog:ozaco",
+        "@ozaco/std": "catalog:ozaco",
+        "tsdown": "catalog:build",
+        "unrun": "catalog:build",
+        "zod": "catalog:shared",
+      },
+    },
     "plugins/minecraft": {
       "name": "@ozaco/ozc-plugin-minecraft",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "devDependencies": {
         "@ozaco/cli": "catalog:ozaco",
         "@ozaco/devkit": "catalog:ozaco",
@@ -251,6 +265,8 @@
     "@ozaco/devkit": ["@ozaco/devkit@0.4.0", "", { "peerDependencies": { "@ozaco/ai": "*", "@ozaco/cli": "*", "@ozaco/client": "*", "@ozaco/db": "*", "@ozaco/server": "*", "@ozaco/std": "*", "@ozaco/transport": "*", "unplugin": "^3.0.0" } }, "sha512-weY1trOPeig0c4/muBUKFPQmS+fqNCrM2qGTvd3QlOv5rKO6HWcEM/79NzLFpMMFibF3obwXaMcndB0W+r4LMA=="],
 
     "@ozaco/ozc-devkit": ["@ozaco/ozc-devkit@0.1.0", "", { "dependencies": { "rolldown": "1.2.12" }, "peerDependencies": { "@ozaco/devkit": "^0.4.0", "@ozaco/ozc-sdk": "*", "@ozaco/std": "^0.5.0", "unplugin": "^3.0.0" } }, "sha512-2Xv4YqTM/vtqO7IufAlJbNBEx/ybJgLviDzk0hgB7yXi6Ugikym8NCcIk1N5BqGpDA5GrZnLkbwqLTx3e67AUg=="],
+
+    "@ozaco/ozc-plugin-ignoredpi": ["@ozaco/ozc-plugin-ignoredpi@workspace:plugins/ignoredpi"],
 
     "@ozaco/ozc-plugin-minecraft": ["@ozaco/ozc-plugin-minecraft@workspace:plugins/minecraft"],
 

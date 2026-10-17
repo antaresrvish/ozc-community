@@ -91,6 +91,32 @@ Pre-commit hook runs `moon run :check`.
   Not yet: the WebRTC side — the user's words: "ip üzerinden rtc portu açacak" — an agent beside
   the server reached over an RTC port on the node's address. Nothing of it is in the spec.
 
+- `plugins/ignoredpi` — `ozc ignoredpi up|down|status|check|logs|run`: the sites blocked in Turkey
+  opened for EVERY app on the machine, with no proxy setting anywhere (SpoofDPI is a proxy: the
+  Discord app ignores it). The service is the machine's DNS: names are resolved over DoH by
+  address (`https://1.1.1.1/dns-query` — no name for the DPI to read); a blocked name — on the
+  lists (Discord's built in, `[ignoredpi].domains`) or one the ISP's resolver answers with its
+  block page (the sinkholes: BTK's built in, others learned at start from canary names) — is
+  answered with this machine, A only (no AAAA, no HTTPS record). Its forwarder on 443/80 reads the
+  name from the TLS hello (HTTP `Host`), connects to the real address and sends the hello as TWO
+  TLS records cut inside the name; the TLS is never opened. Measured on Türk Telekom (2026-10-17):
+  TCP segmentation (SpoofDPI's way) is reset, the record split passes; for HTTP the header name
+  `hoSt` passes where `Host`/`host` do not. macOS lets a user bind 53/80/443 on the wildcard
+  only, so the service binds `0.0.0.0` and drops anything not from loopback (`lan = true` admits
+  the private network). `up` writes the LaunchAgent `com.ozaco.ignoredpi` (`ozc ignoredpi run`
+  from home); `run` takes the ports FIRST, then points every network service on a device at
+  127.0.0.1 (`networksetup`), saving each one's DNS to `~/.ozaco/ignoredpi/state.json` before it
+  is changed, and gives them back on SIGTERM; `down` (or the next start) gives back what a crashed
+  run saved. The ISP resolver is DHCP's (`ipconfig getoption`), never the DNS set by hand. Config
+  is read from home (`~/ozaco.toml` or `~/.ozaco/ignoredpi.toml`): the whole shape is
+  `plugins/ignoredpi/examples/ignoredpi.toml`. `run --trial --dns n --https n --http n` runs it
+  beside everything, the DNS untouched; `check <name>` shows ISP vs DoH, the verdict, and a hello
+  sent whole and cut. Seams: `IGNOREDPI_NETWORKSETUP`, `IGNOREDPI_LAUNCHCTL`, `IGNOREDPI_IPCONFIG`,
+  `IGNOREDPI_DSCACHEUTIL`, `IGNOREDPI_OZC`. A socket belongs to the scope it is opened in — never
+  open one inside a `race` branch (the race's end closes it).
+
+  Not yet: `up`/`down` on Linux (systemd + resolved) and Windows; `run --trial` runs anywhere.
+
 ## Release
 
 `release/` (root Moon project `community`) releases each plugin at its own version as one GitHub

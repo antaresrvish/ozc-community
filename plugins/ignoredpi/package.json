@@ -1,0 +1,23 @@
+{
+  "name": "@ozaco/ozc-plugin-ignoredpi",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ignoredpi plugin for ozc — open the sites blocked in Turkey for every app on the machine: a local DNS that sends blocked names through a forwarder which cuts the TLS hello so the DPI cannot read it",
+  "type": "module",
+  "devDependencies": {
+    "@ozaco/cli": "catalog:ozaco",
+    "@ozaco/devkit": "catalog:ozaco",
+    "@ozaco/ozc-devkit": "catalog:ozaco",
+    "@ozaco/ozc-sdk": "catalog:ozaco",
+    "@ozaco/std": "catalog:ozaco",
+    "tsdown": "catalog:build",
+    "unrun": "catalog:build",
+    "zod": "catalog:shared"
+  },
+  "ozc": {
+    "name": "ignoredpi",
+    "commands": [
+      "ignoredpi"
+    ]
+  }
+}

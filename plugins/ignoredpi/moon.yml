@@ -1,0 +1,31 @@
+language: typescript
+layer: application
+toolchains:
+  default: bun
+
+tasks:
+  build:
+    command: bun x tsdown --config-loader unrun
+    inputs:
+      - src/**/*
+      - package.json
+      - tsdown.config.ts
+      - /bun.lock
+    outputs:
+      - dist/plugin.js
+  types:
+    command: bun x tsc -p tsconfig.json --noEmit
+    inputs:
+      - src/**/*
+      - tests/**/*
+  test:
+    # the wire formats as they are (DNS messages, the TLS hello, the HTTP head), and the service
+    # end to end on ports of its own: an upstream and a server the suite starts itself, nothing on
+    # the machine's DNS settings is touched
+    command: bun test
+    inputs:
+      - src/**/*
+      - tests/**/*
+      - package.json
+      - tsconfig.json
+      - /bun.lock
